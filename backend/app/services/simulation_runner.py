@@ -610,83 +610,91 @@ class SimulationRunner:
         try:
             with open(log_path, 'r', encoding='utf-8') as f:
                 f.seek(position)
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        try:
-                            action_data = json.loads(line)
+                safe_position = position
+                while True:
+                    raw_line = f.readline()
+                    if not raw_line:          # EOF
+                        break
+                    if not raw_line.endswith('\n'):  # Partial line — wait for flush
+                        break
+                    safe_position = f.tell()
+                    line = raw_line.strip()
+                    if not line:
+                        continue
+                    try:
+                        action_data = json.loads(line)
 
-                            # Handle event-type entries
-                            if "event_type" in action_data:
-                                event_type = action_data.get("event_type")
+                        # Handle event-type entries
+                        if "event_type" in action_data:
+                            event_type = action_data.get("event_type")
 
-                                # Detect simulation_end event and mark platform as completed
-                                if event_type == "simulation_end":
-                                    if platform == "twitter":
-                                        state.twitter_completed = True
-                                        state.twitter_running = False
-                                        logger.info(f"Twitter simulation completed: {state.simulation_id}, total_rounds={action_data.get('total_rounds')}, total_actions={action_data.get('total_actions')}")
-                                    elif platform == "reddit":
-                                        state.reddit_completed = True
-                                        state.reddit_running = False
-                                        logger.info(f"Reddit simulation completed: {state.simulation_id}, total_rounds={action_data.get('total_rounds')}, total_actions={action_data.get('total_actions')}")
+                            # Detect simulation_end event and mark platform as completed
+                            if event_type == "simulation_end":
+                                if platform == "twitter":
+                                    state.twitter_completed = True
+                                    state.twitter_running = False
+                                    logger.info(f"Twitter simulation completed: {state.simulation_id}, total_rounds={action_data.get('total_rounds')}, total_actions={action_data.get('total_actions')}")
+                                elif platform == "reddit":
+                                    state.reddit_completed = True
+                                    state.reddit_running = False
+                                    logger.info(f"Reddit simulation completed: {state.simulation_id}, total_rounds={action_data.get('total_rounds')}, total_actions={action_data.get('total_actions')}")
 
-                                    # Check if all enabled platforms have completed.
-                                    # If only one platform is running, check only that one.
-                                    # If both platforms are running, both must complete.
-                                    all_completed = cls._check_all_platforms_completed(state)
-                                    if all_completed:
-                                        state.runner_status = RunnerStatus.COMPLETED
-                                        state.completed_at = datetime.now().isoformat()
-                                        logger.info(f"All platform simulations completed: {state.simulation_id}")
+                                # Check if all enabled platforms have completed.
+                                # If only one platform is running, check only that one.
+                                # If both platforms are running, both must complete.
+                                all_completed = cls._check_all_platforms_completed(state)
+                                if all_completed:
+                                    state.runner_status = RunnerStatus.COMPLETED
+                                    state.completed_at = datetime.now().isoformat()
+                                    logger.info(f"All platform simulations completed: {state.simulation_id}")
 
-                                # Update round info (from round_end events)
-                                elif event_type == "round_end":
-                                    round_num = action_data.get("round", 0)
-                                    simulated_hours = action_data.get("simulated_hours", 0)
+                            # Update round info (from round_end events)
+                            elif event_type == "round_end":
+                                round_num = action_data.get("round", 0)
+                                simulated_hours = action_data.get("simulated_hours", 0)
 
-                                    # Update per-platform independent rounds and time
-                                    if platform == "twitter":
-                                        if round_num > state.twitter_current_round:
-                                            state.twitter_current_round = round_num
-                                        state.twitter_simulated_hours = simulated_hours
-                                    elif platform == "reddit":
-                                        if round_num > state.reddit_current_round:
-                                            state.reddit_current_round = round_num
-                                        state.reddit_simulated_hours = simulated_hours
+                                # Update per-platform independent rounds and time
+                                if platform == "twitter":
+                                    if round_num > state.twitter_current_round:
+                                        state.twitter_current_round = round_num
+                                    state.twitter_simulated_hours = simulated_hours
+                                elif platform == "reddit":
+                                    if round_num > state.reddit_current_round:
+                                        state.reddit_current_round = round_num
+                                    state.reddit_simulated_hours = simulated_hours
 
-                                    # Overall round is the maximum across both platforms
-                                    if round_num > state.current_round:
-                                        state.current_round = round_num
-                                    # Overall time is the maximum across both platforms
-                                    state.simulated_hours = max(state.twitter_simulated_hours, state.reddit_simulated_hours)
+                                # Overall round is the maximum across both platforms
+                                if round_num > state.current_round:
+                                    state.current_round = round_num
+                                # Overall time is the maximum across both platforms
+                                state.simulated_hours = max(state.twitter_simulated_hours, state.reddit_simulated_hours)
 
-                                continue
+                            continue
 
-                            action = AgentAction(
-                                round_num=action_data.get("round", 0),
-                                timestamp=action_data.get("timestamp", datetime.now().isoformat()),
-                                platform=platform,
-                                agent_id=action_data.get("agent_id", 0),
-                                agent_name=action_data.get("agent_name", ""),
-                                action_type=action_data.get("action_type", ""),
-                                action_args=action_data.get("action_args", {}),
-                                result=action_data.get("result"),
-                                success=action_data.get("success", True),
-                            )
-                            state.add_action(action)
+                        action = AgentAction(
+                            round_num=action_data.get("round", 0),
+                            timestamp=action_data.get("timestamp", datetime.now().isoformat()),
+                            platform=platform,
+                            agent_id=action_data.get("agent_id", 0),
+                            agent_name=action_data.get("agent_name", ""),
+                            action_type=action_data.get("action_type", ""),
+                            action_args=action_data.get("action_args", {}),
+                            result=action_data.get("result"),
+                            success=action_data.get("success", True),
+                        )
+                        state.add_action(action)
 
-                            # Update round number
-                            if action.round_num and action.round_num > state.current_round:
-                                state.current_round = action.round_num
+                        # Update round number
+                        if action.round_num and action.round_num > state.current_round:
+                            state.current_round = action.round_num
 
-                            # If graph memory update is enabled, send activity to Zep
-                            if graph_updater:
-                                graph_updater.add_activity_from_dict(action_data, platform)
+                        # If graph memory update is enabled, send activity to Zep
+                        if graph_updater:
+                            graph_updater.add_activity_from_dict(action_data, platform)
 
-                        except json.JSONDecodeError:
-                            pass
-                return f.tell()
+                    except json.JSONDecodeError:
+                        pass
+                return safe_position
         except Exception as e:
             logger.warning(f"Failed to read action log: {log_path}, error={e}")
             return position
