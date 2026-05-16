@@ -4,7 +4,7 @@
     <header class="app-header">
       <div class="header-left">
         <div class="brand" @click="router.push({ name: 'Home' })">MIROFISH</div>
-        <span class="header-back-label">← {{ t('projectDetail.backToHome') }}</span>
+        <span class="header-back-label" @click="router.push({ name: 'Home' })">← {{ t('projectDetail.backToHome') }}</span>
       </div>
       <div class="header-right">
         <button class="help-btn" @click="openHelp('overview')" :title="$t('help.buttonTitle')">?</button>
@@ -381,7 +381,8 @@ onMounted(loadDetail)
 .header-left { display: flex; align-items: center; gap: 16px; }
 .brand { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 18px; letter-spacing: 1px; cursor: pointer; color: #000; }
 .brand:hover { color: #ff4500; }
-.header-back-label { font-size: 0.75rem; color: #999; }
+.header-back-label { font-size: 0.75rem; color: #999; cursor: pointer; }
+.header-back-label:hover { color: #000; }
 .header-right { display: flex; align-items: center; gap: 16px; }
 .help-btn { background: none; border: 1px solid #ccc; color: #333; width: 28px; height: 28px; font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: border-color 0.15s; }
 .help-btn:hover { border-color: #000; }
