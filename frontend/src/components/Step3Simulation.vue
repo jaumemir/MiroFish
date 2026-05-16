@@ -296,6 +296,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useBackTo } from '@/composables/useBackTo.js'
 import {
   startSimulation,
   stopSimulation,
@@ -305,6 +306,7 @@ import {
 import { generateReport } from '../api/report'
 
 const { t } = useI18n()
+const { pushWithBackTo } = useBackTo('Home')
 
 const props = defineProps({
   simulationId: String,
@@ -318,7 +320,7 @@ const props = defineProps({
   systemLogs: Array
 })
 
-const emit = defineEmits(['go-back', 'next-step', 'add-log', 'update-status'])
+const emit = defineEmits(['go-back', 'next-step', 'add-log', 'update-status', 'update-graph-id'])
 
 const router = useRouter()
 
@@ -425,10 +427,14 @@ const doStartSimulation = async () => {
       }
       addLog(t('log.engineStarted'))
       addLog(`  ├─ PID: ${res.data.process_pid || '-'}`)
-      
+
+      if (res.data.graph_id_simulation) {
+        emit('update-graph-id', res.data.graph_id_simulation)
+      }
+
       phase.value = 1
       runStatus.value = res.data
-      
+
       startStatusPolling()
       startDetailPolling()
     } else {
@@ -520,14 +526,18 @@ const fetchRunStatus = async () => {
       }
       
       // 检测模拟是否已完成（通过 runner_status 或平台完成状态判断）
-      const isCompleted = data.runner_status === 'completed' || data.runner_status === 'stopped'
-      
+      const isCompleted = data.runner_status === 'completed'
+        || data.runner_status === 'stopped'
+        || data.runner_status === 'failed'
+
       // 额外检查：如果后端还没来得及更新 runner_status，但平台已经报告完成
       // 通过检测 twitter_completed 和 reddit_completed 状态判断
       const platformsCompleted = checkPlatformsCompleted(data)
-      
+
       if (isCompleted || platformsCompleted) {
-        if (platformsCompleted && !isCompleted) {
+        if (data.runner_status === 'failed') {
+          addLog(t('log.simEndedWithError'))
+        } else if (platformsCompleted && !isCompleted) {
           addLog(t('log.allPlatformsCompleted'))
         }
         addLog(t('log.simCompleted'))
@@ -674,7 +684,7 @@ const handleNextStep = async () => {
       addLog(t('log.reportGenTaskStarted', { reportId }))
       
       // 跳转到报告页面
-      router.push({ name: 'Report', params: { reportId } })
+      pushWithBackTo({ name: 'Report', params: { reportId } })
     } else {
       addLog(t('log.reportGenFailed', { error: res.error || t('common.unknownError') }))
       isGeneratingReport.value = false
@@ -719,17 +729,16 @@ onMounted(async () => {
         await doReconnectSimulation()
         return
       }
-      if (status === 'completed' || status === 'stopped') {
-        addLog(t('log.simAlreadyCompleted'))
+      if (status === 'completed' || status === 'stopped' || status === 'failed') {
         runStatus.value = res.data
         phase.value = 2
         emit('update-status', 'completed')
         await fetchRunStatusDetail()
-        return
-      }
-      if (status === 'failed') {
-        startError.value = res.data.error || t('common.unknownError')
-        emit('update-status', 'error')
+        if (status === 'failed') {
+          addLog(t('log.simEndedWithError'))
+        } else {
+          addLog(t('log.simAlreadyCompleted'))
+        }
         return
       }
     }
