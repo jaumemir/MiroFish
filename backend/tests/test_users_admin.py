@@ -132,6 +132,11 @@ def test_purge_user_deletes_external_graphs(client, in_memory_db):
     called_ids = {call.args[0] for call in mock_instance.delete_graph.call_args_list}
     assert called_ids == {'ext-graph-1', 'ext-graph-2'}
 
+    # Verificar que l'usuari ha estat esborrat de la BD
+    with get_session() as db:
+        gone = db.execute(select(UserModel).where(UserModel.id == user_id)).scalar_one_or_none()
+    assert gone is None
+
 
 def test_purge_user_continues_if_graph_delete_fails(client, in_memory_db):
     """Si delete_graph falla, l'usuari s'esborra igualment."""
