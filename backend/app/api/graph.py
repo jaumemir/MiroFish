@@ -843,3 +843,22 @@ def download_project_source(project_id: str):
             "Content-Type": file_info.get("mime_type", "application/octet-stream"),
         }
     )
+
+
+@graph_bp.route('/project/<project_id>/ontology/download', methods=['GET'])
+@require_project_owner
+def download_project_ontology(project_id: str):
+    """Download the current ontology for a project as JSON."""
+    ontology = ProjectManager.get_ontology(project_id)
+    if not ontology:
+        return jsonify({"success": False, "error": t('api.projectNotFound', id=project_id)}), 404
+
+    data = json.dumps(ontology, ensure_ascii=False, indent=2)
+    return Response(
+        data,
+        status=200,
+        headers={
+            "Content-Disposition": f'attachment; filename="ontology_{project_id}.json"',
+            "Content-Type": "application/json; charset=utf-8",
+        }
+    )

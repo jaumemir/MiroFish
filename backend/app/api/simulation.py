@@ -866,6 +866,34 @@ def get_simulation(simulation_id: str):
         }), 500
 
 
+@simulation_bp.route('/<simulation_id>', methods=['DELETE'])
+def delete_simulation(simulation_id: str):
+    """Delete a simulation and its data directory."""
+    try:
+        import shutil
+        manager = SimulationManager()
+        state = manager.get_simulation(simulation_id)
+        if not state:
+            return jsonify({"success": False, "error": t('api.simulationNotFound', id=simulation_id)}), 404
+
+        sim_dir = manager._get_simulation_dir(simulation_id)
+        # Remove in-memory cache entry
+        manager._simulations.pop(simulation_id, None)
+        # Remove data directory if it exists
+        if os.path.isdir(sim_dir):
+            shutil.rmtree(sim_dir, ignore_errors=True)
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        logger.error(f"Failed to delete simulation: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
 @simulation_bp.route('/list', methods=['GET'])
 def list_simulations():
     """
