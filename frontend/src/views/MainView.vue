@@ -21,6 +21,7 @@
       </div>
 
       <div class="header-right">
+        <button class="help-btn" @click="openHelp(currentStep === 1 ? 'step1' : 'step2')" :title="$t('help.buttonTitle')">?</button>
         <LanguageSwitcher />
         <div class="step-divider"></div>
         <div class="workflow-step">
@@ -89,10 +90,12 @@ import Step2EnvSetup from '../components/Step2EnvSetup.vue'
 import { generateOntology, importOntology, getProject, buildGraph, getTaskStatus, getGraphData, deleteProject } from '../api/graph'
 import { getPendingUpload, clearPendingUpload } from '../store/pendingUpload'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
+import { useHelp } from '../composables/useHelp'
 
 const route = useRoute()
 const router = useRouter()
 const { t, tm } = useI18n()
+const { openHelp } = useHelp()
 
 // Layout State
 const viewMode = ref('split') // graph | split | workbench
@@ -262,7 +265,11 @@ const loadProject = async () => {
       updatePhaseByStatus(res.data.status)
       addLog(`Project loaded. Status: ${res.data.status}`)
       
-      if (res.data.status === 'ontology_generated' && !res.data.graph_id) {
+      const canRetryBuild = (
+        (res.data.status === 'ontology_generated' && !res.data.graph_id) ||
+        (res.data.status === 'failed' && res.data.ontology && !res.data.graph_id)
+      )
+      if (canRetryBuild) {
         await startBuildGraph()
       } else if (res.data.status === 'graph_building') {
         const taskId = res.data.active_task_id || res.data.graph_build_task_id
@@ -272,7 +279,7 @@ const loadProject = async () => {
           startPollingTask(taskId)
           startGraphPolling()
         }
-      } else if (res.data.status === 'graph_completed' && res.data.graph_id) {
+      } else if ((res.data.status === 'graph_completed' || res.data.status === 'failed') && res.data.graph_id) {
         currentPhase.value = 2
         await loadGraph(res.data.graph_id)
       }
@@ -294,7 +301,18 @@ const updatePhaseByStatus = (status) => {
     case 'ontology_generated': currentPhase.value = 0; break;
     case 'graph_building': currentPhase.value = 1; break;
     case 'graph_completed': currentPhase.value = 2; break;
-    case 'failed': error.value = 'Project failed'; break;
+    case 'failed': {
+      const data = projectData.value
+      if (data?.ontology && !data?.graph_id) {
+        currentPhase.value = 0  // Recuperar a fase d'ontologia per reintentar
+      } else if (data?.graph_id) {
+        currentPhase.value = 2
+      } else {
+        currentPhase.value = 0
+        error.value = 'Project failed'
+      }
+      break
+    }
   }
 }
 
@@ -585,4 +603,21 @@ onUnmounted(() => {
 .panel-wrapper.left {
   border-right: 1px solid #EAEAEA;
 }
+
+.help-btn {
+  background: none;
+  border: 1px solid #ccc;
+  color: #333;
+  width: 28px;
+  height: 28px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s;
+}
+.help-btn:hover { border-color: #000; }
 </style>
