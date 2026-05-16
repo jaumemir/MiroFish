@@ -76,6 +76,7 @@
           @go-back="handleGoBack"
           @next-step="handleNextStep"
           @add-log="addLog"
+          @agents-updated="(agents) => { simulationAgents.value = agents }"
         />
         <!-- Step 3: 开始模拟 (adjust mode) -->
         <Step3Simulation
@@ -86,6 +87,7 @@
           :systemLogs="systemLogs"
           :adjustMode="isAdjustMode"
           :adjustConfig="adjustData?.config ?? null"
+          :agents="simulationAgents"
           @go-back="handleGoBack"
           @next-step="handleNextStep"
           @add-log="addLog"
@@ -142,6 +144,9 @@ let graphPollTimer = null
 const isAdjustMode = computed(() => route.query.mode === 'adjust')
 const adjustSimulationId = computed(() => route.query.simulationId)
 const adjustData = ref(null)
+
+// Shared agent list: updated by Step2 so Step3 stays in sync (adjust mode)
+const simulationAgents = ref([])
 
 // --- Computed Layout Styles ---
 const leftPanelStyle = computed(() => {

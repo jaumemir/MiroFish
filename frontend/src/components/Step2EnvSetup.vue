@@ -808,7 +808,7 @@ const props = defineProps({
   adjustProfiles: { type: Array, default: null },
 })
 
-const emit = defineEmits(['go-back', 'next-step', 'add-log', 'update-status'])
+const emit = defineEmits(['go-back', 'next-step', 'add-log', 'update-status', 'agents-updated'])
 
 // State
 const phase = ref(0) // 0: 初始化, 1: 生成人设, 2: 生成配置, 3: 完成
@@ -1339,6 +1339,16 @@ const confirmDeleteAgent = async (agent) => {
     if (res.success) {
       profiles.value = profiles.value.filter(p => p.user_id !== agent.user_id)
       closeAgentModal()
+      // Adjust mode: keep simulationConfig.agent_configs in sync
+      if (props.adjustMode && simulationConfig.value?.agent_configs) {
+        simulationConfig.value.agent_configs = simulationConfig.value.agent_configs.filter(
+          ac => ac.agent_id !== agent.user_id
+        )
+      }
+      // Notify parent so Step3Simulation can also stay in sync
+      if (props.adjustMode) {
+        emit('agents-updated', profiles.value)
+      }
     }
   } catch (err) {
     addLog(`Delete failed: ${err.message}`)

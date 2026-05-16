@@ -329,6 +329,7 @@ const props = defineProps({
   systemLogs: Array,
   adjustMode: { type: Boolean, default: false },
   adjustConfig: { type: Object, default: null },
+  agents: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['go-back', 'next-step', 'add-log', 'update-status', 'update-graph-id'])
@@ -368,6 +369,25 @@ watch(() => props.adjustConfig, (config) => {
     }
   }
 }, { immediate: true })
+
+// Adjust mode: keep adjustConfig.agent_configs in sync when agents change in Step2
+watch(() => props.agents, (newAgents, oldAgents) => {
+  if (!props.adjustMode) return
+  if (!newAgents || newAgents.length === 0) return
+  if (!props.adjustConfig?.agent_configs) return
+
+  const newIds = new Set(newAgents.map(a => a.user_id))
+
+  // Remove entries for deleted agents
+  const before = props.adjustConfig.agent_configs.length
+  props.adjustConfig.agent_configs = props.adjustConfig.agent_configs.filter(
+    ac => newIds.has(ac.agent_id)
+  )
+  const removed = before - props.adjustConfig.agent_configs.length
+  if (removed > 0) {
+    console.warn(`[adjust-mode] Removed ${removed} agent_config(s) to match updated agent list`)
+  }
+}, { deep: true })
 
 // Computed
 // 按时间顺序显示动作（最新的在最后面，即底部）
