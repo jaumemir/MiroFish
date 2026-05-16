@@ -123,3 +123,58 @@ def test_project_detail_with_relations(client, app):
     assert len(data['simulations']) == 1
     assert data['simulations'][0]['status'] == 'completed'
     assert data['simulations'][0]['platform'] == 'twitter'
+
+
+def test_simulation_detail_returns_profiles_and_config(client, app, tmp_path, monkeypatch):
+    import json
+    from backend.app.services import simulation_manager as sm_module
+
+    monkeypatch.setattr(sm_module.SimulationManager, 'SIMULATION_DATA_DIR', str(tmp_path))
+
+    sim_id = "sim_detail_test001"
+    sim_dir = tmp_path / sim_id
+    sim_dir.mkdir()
+
+    state = {
+        "simulation_id": sim_id,
+        "project_id": "proj_detail_test",
+        "graph_id": "g_detail_test",
+        "status": "completed",
+        "entities_count": 2,
+        "profiles_count": 2,
+        "entity_types": [],
+        "config_generated": True,
+        "config_reasoning": "",
+        "current_round": 10,
+        "twitter_status": "completed",
+        "reddit_status": "not_started",
+        "created_at": "2026-01-01T00:00:00",
+        "updated_at": "2026-01-01T12:00:00",
+        "error": None,
+        "parent_simulation_id": None,
+        "graph_id_simulation": None,
+        "enable_twitter": True,
+        "enable_reddit": False,
+    }
+    (sim_dir / "state.json").write_text(json.dumps(state))
+
+    profiles = [
+        {"user_id": 0, "user_name": "alice", "name": "Alice", "bio": "Bio A", "persona": "Curious", "manually_edited": False},
+        {"user_id": 1, "user_name": "bob", "name": "Bob", "bio": "Bio B", "persona": "Bold", "manually_edited": False},
+    ]
+    (sim_dir / "twitter_profiles.json").write_text(json.dumps(profiles))
+
+    sim_config = {"max_rounds": 50, "platform": "twitter"}
+    (sim_dir / "simulation_config.json").write_text(json.dumps(sim_config))
+
+    resp = client.get(f'/api/simulation/{sim_id}/detail')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert 'simulation' in data
+    assert 'profiles' in data
+    assert 'config' in data
+    assert data['simulation']['graph_id'] == 'g_detail_test'
+    assert data['simulation']['status'] == 'completed'
+    assert len(data['profiles']) == 2
+    assert data['profiles'][0]['user_name'] == 'alice'
+    assert data['config']['max_rounds'] == 50

@@ -866,6 +866,61 @@ def get_simulation(simulation_id: str):
         }), 500
 
 
+@simulation_bp.route('/<simulation_id>/detail', methods=['GET'])
+def get_simulation_detail(simulation_id: str):
+    """Get simulation detail: state, profiles and config"""
+    try:
+        manager = SimulationManager()
+        state = manager.get_simulation(simulation_id)
+
+        if not state:
+            return jsonify({
+                "success": False,
+                "error": t('api.simulationNotFound', id=simulation_id)
+            }), 404
+
+        # Load profiles (use platform from state: twitter takes priority)
+        platform = "twitter" if state.enable_twitter else "reddit"
+        try:
+            profiles = manager.get_profiles(simulation_id, platform=platform)
+        except Exception:
+            profiles = []
+
+        # Load simulation config from file
+        config = manager.get_simulation_config(simulation_id) or {}
+
+        return jsonify({
+            "simulation": {
+                "id": state.simulation_id,
+                "project_id": state.project_id,
+                "graph_id": state.graph_id,
+                "status": state.status.value if hasattr(state.status, 'value') else state.status,
+                "platform": platform,
+                "enable_twitter": state.enable_twitter,
+                "enable_reddit": state.enable_reddit,
+                "entities_count": state.entities_count,
+                "profiles_count": state.profiles_count,
+                "current_round": state.current_round,
+                "twitter_status": state.twitter_status,
+                "reddit_status": state.reddit_status,
+                "created_at": state.created_at,
+                "updated_at": state.updated_at,
+                "graph_id_simulation": state.graph_id_simulation,
+                "parent_simulation_id": state.parent_simulation_id,
+            },
+            "profiles": profiles,
+            "config": config,
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Failed to get simulation detail: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
 @simulation_bp.route('/<simulation_id>', methods=['DELETE'])
 def delete_simulation(simulation_id: str):
     """Delete a simulation and its data directory."""
