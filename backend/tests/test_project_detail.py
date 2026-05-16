@@ -125,7 +125,7 @@ def test_project_detail_with_relations(client, app):
     assert data['simulations'][0]['platform'] == 'twitter'
 
 
-def test_simulation_detail_returns_profiles_and_config(client, app, tmp_path, monkeypatch):
+def test_simulation_detail_returns_profiles_and_config(client, app, tmp_path, monkeypatch, in_memory_db):
     import json
     from backend.app.services import simulation_manager as sm_module
 
@@ -134,6 +134,24 @@ def test_simulation_detail_returns_profiles_and_config(client, app, tmp_path, mo
     sim_id = "sim_detail_test001"
     sim_dir = tmp_path / sim_id
     sim_dir.mkdir()
+
+    # Insert a SimulationModel DB record so rounds_total/rounds_completed are populated
+    from backend.app.models.db_models import ProjectModel, SimulationModel
+    from backend.app.db import get_session
+    with get_session() as db:
+        proj = ProjectModel(name='Detail Test Project', simulation_requirement='q')
+        db.add(proj)
+        db.flush()
+        sim_record = SimulationModel(
+            id=sim_id,
+            project_id=proj.id,
+            status='completed',
+            platform='twitter',
+            rounds_total=30,
+            rounds_completed=30,
+        )
+        db.add(sim_record)
+        db.commit()
 
     state = {
         "simulation_id": sim_id,
@@ -178,3 +196,7 @@ def test_simulation_detail_returns_profiles_and_config(client, app, tmp_path, mo
     assert len(data['profiles']) == 2
     assert data['profiles'][0]['user_name'] == 'alice'
     assert data['config']['max_rounds'] == 50
+    assert 'rounds_total' in data['simulation']
+    assert 'rounds_completed' in data['simulation']
+    assert data['simulation']['rounds_total'] == 30
+    assert data['simulation']['rounds_completed'] == 30

@@ -889,6 +889,20 @@ def get_simulation_detail(simulation_id: str):
         # Load simulation config from file
         config = manager.get_simulation_config(simulation_id) or {}
 
+        # Fetch rounds_total and rounds_completed from DB
+        rounds_total = None
+        rounds_completed = 0
+        try:
+            from ..db import get_session
+            from ..models.db_models import SimulationModel
+            with get_session() as db:
+                sim_record = db.get(SimulationModel, simulation_id)
+                if sim_record:
+                    rounds_total = sim_record.rounds_total
+                    rounds_completed = sim_record.rounds_completed
+        except Exception:
+            pass
+
         return jsonify({
             "simulation": {
                 "id": state.simulation_id,
@@ -907,6 +921,8 @@ def get_simulation_detail(simulation_id: str):
                 "updated_at": state.updated_at,
                 "graph_id_simulation": state.graph_id_simulation,
                 "parent_simulation_id": state.parent_simulation_id,
+                "rounds_total": rounds_total,
+                "rounds_completed": rounds_completed,
             },
             "profiles": profiles,
             "config": config,
