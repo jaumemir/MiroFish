@@ -229,6 +229,9 @@ const initProject = async () => {
     try {
       adjustData.value = await getSimulationDetail(adjustSimulationId.value)
       currentStep.value = 2
+      if (adjustData.value?.profiles) {
+        simulationAgents.value = adjustData.value.profiles
+      }
       addLog(`Adjust mode: loaded simulation ${adjustSimulationId.value}`)
     } catch (e) {
       console.error('Failed to load simulation detail:', e)

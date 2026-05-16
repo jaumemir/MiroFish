@@ -370,23 +370,24 @@ watch(() => props.adjustConfig, (config) => {
   }
 }, { immediate: true })
 
-// Adjust mode: keep adjustConfig.agent_configs in sync when agents change in Step2
-watch(() => props.agents, (newAgents, oldAgents) => {
-  if (!props.adjustMode) return
-  if (!newAgents || newAgents.length === 0) return
-  if (!props.adjustConfig?.agent_configs) return
+// Local copy of agent_configs to avoid mutating the prop directly
+const localAgentConfigs = ref(null)
 
-  const newIds = new Set(newAgents.map(a => a.user_id))
-
-  // Remove entries for deleted agents
-  const before = props.adjustConfig.agent_configs.length
-  props.adjustConfig.agent_configs = props.adjustConfig.agent_configs.filter(
-    ac => newIds.has(ac.agent_id)
-  )
-  const removed = before - props.adjustConfig.agent_configs.length
-  if (removed > 0) {
-    console.warn(`[adjust-mode] Removed ${removed} agent_config(s) to match updated agent list`)
+watch(() => props.adjustConfig, (config) => {
+  if (config?.agent_configs) {
+    localAgentConfigs.value = [...config.agent_configs]
   }
+}, { immediate: true })
+
+// Adjust mode: keep localAgentConfigs in sync when agents change in Step2
+watch(() => props.agents, (newAgents) => {
+  if (!props.adjustMode || !localAgentConfigs.value) return
+  const agentIds = new Set(newAgents.map(a => a.user_id ?? a.id))
+  const removed = localAgentConfigs.value.filter(ac => !agentIds.has(ac.agent_id ?? ac.user_id))
+  if (removed.length > 0) {
+    console.warn('[adjust-mode] Removing orphaned agent_configs:', removed.map(a => a.agent_id))
+  }
+  localAgentConfigs.value = localAgentConfigs.value.filter(ac => agentIds.has(ac.agent_id ?? ac.user_id))
 }, { deep: true })
 
 // Computed
