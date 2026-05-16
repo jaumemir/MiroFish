@@ -99,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import GraphPanel from '../components/GraphPanel.vue'
@@ -118,7 +118,7 @@ const router = useRouter()
 const { t, tm } = useI18n()
 const { openHelp } = useHelp()
 const { navigateBack } = useBackTo('Home')
-const hasBackTo = computed(() => !!history.state?.backTo)
+const hasBackTo = ref(false)
 
 // Layout State
 const viewMode = ref('split') // graph | split | workbench
@@ -508,6 +508,7 @@ const handleDeleteOntology = async () => {
 }
 
 onMounted(() => {
+  hasBackTo.value = !!history.state?.backTo
   initProject()
 })
 
