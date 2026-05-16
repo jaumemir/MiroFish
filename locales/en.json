@@ -756,7 +756,7 @@
     "username": "Username",
     "usernamePlaceholder": "demo",
     "email": "Email",
-    "emailPlaceholder": "your@email.com",
+    "emailPlaceholder": "your{'@'}email.com",
     "password": "Password",
     "passwordPlaceholder": "••••••••",
     "submit": "Enter",
@@ -813,6 +813,13 @@
     "user": "User",
     "project": "Project",
     "platform": "Platform",
-    "rounds": "Rounds"
+    "rounds": "Rounds",
+    "enableUser": "Re-enable",
+    "deleteUser": "Delete",
+    "deleteUserTitle": "Delete user",
+    "deleteUserWarning": "This action is irreversible. All projects, simulations, graphs and files belonging to {name} ({email}) will be permanently deleted.",
+    "deleteUserConfirmPlaceholder": "Type the email to confirm",
+    "deleteUserConfirm": "Delete permanently",
+    "deleteUserSuccess": "User deleted."
   }
 }

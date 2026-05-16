@@ -756,7 +756,7 @@
     "username": "用户名",
     "usernamePlaceholder": "demo",
     "email": "邮箱",
-    "emailPlaceholder": "your@email.com",
+    "emailPlaceholder": "your{'@'}email.com",
     "password": "密码",
     "passwordPlaceholder": "••••••••",
     "submit": "登录",
@@ -813,6 +813,13 @@
     "user": "用户",
     "project": "项目",
     "platform": "平台",
-    "rounds": "轮次"
+    "rounds": "轮次",
+    "enableUser": "重新启用",
+    "deleteUser": "删除",
+    "deleteUserTitle": "删除用户",
+    "deleteUserWarning": "此操作不可逆。{name}（{email}）的所有项目、模拟、图谱和文件将被永久删除。",
+    "deleteUserConfirmPlaceholder": "输入邮箱以确认",
+    "deleteUserConfirm": "永久删除",
+    "deleteUserSuccess": "用户已删除。"
   }
 }
