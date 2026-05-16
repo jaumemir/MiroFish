@@ -1,6 +1,6 @@
 <template>
   <div class="env-setup-panel">
-    <div class="scroll-container">
+    <div class="scroll-container" style="position: relative;">
       <!-- Adjust mode banner -->
       <div v-if="props.adjustMode && !editingSection" class="adjust-banner">
         📋 {{ $t('adjust.readOnlyMode') }} —
@@ -8,6 +8,8 @@
           ✏️ {{ $t('adjust.editSection') }}
         </button>
       </div>
+      <!-- Read-only overlay in adjust mode -->
+      <div v-if="props.adjustMode && !editingSection" class="adjust-overlay"></div>
       <!-- Step 01: 模拟实例 -->
       <div class="step-card" :class="{ 'active': phase === 0, 'completed': phase > 0 }">
         <div class="card-header">
@@ -1512,6 +1514,14 @@ onUnmounted(() => {
   color: #ffd080;
   cursor: pointer;
   font-weight: bold;
+}
+
+.adjust-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  cursor: not-allowed;
+  pointer-events: all;
 }
 
 .scroll-container {

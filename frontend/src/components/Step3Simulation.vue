@@ -98,6 +98,7 @@
       </div>
 
       <div class="action-controls">
+        <fieldset :disabled="props.adjustMode && !editingSection" style="border:none;padding:0;margin:0;">
         <div class="option-row">
           <label class="toggle-label">
             <input type="checkbox" v-model="enableGraphMemoryUpdate" :disabled="phase >= 1" />
@@ -105,6 +106,7 @@
             <span class="hint">Update agent conversations to graph in real time (needed for report analysis)</span>
           </label>
         </div>
+        </fieldset>
         <button
           class="action-btn primary"
           :disabled="phase !== 2 || isGeneratingReport"
@@ -353,6 +355,16 @@ watch(() => props.adjustConfig, (config) => {
     // Pre-fill runStatus with config data if available
     if (config.max_rounds != null) {
       runStatus.value = { ...runStatus.value, total_rounds: config.max_rounds }
+    } else if (config.time_config?.total_simulation_hours && config.time_config?.minutes_per_round) {
+      // Derive max_rounds from time config if max_rounds is not set directly
+      const derived = Math.floor((config.time_config.total_simulation_hours * 60) / config.time_config.minutes_per_round)
+      if (derived > 0) {
+        runStatus.value = { ...runStatus.value, total_rounds: derived }
+      }
+    }
+    // Pre-fill graph memory update toggle if stored in config
+    if (config.enable_graph_memory_update != null) {
+      enableGraphMemoryUpdate.value = config.enable_graph_memory_update
     }
   }
 }, { immediate: true })
@@ -801,6 +813,16 @@ onUnmounted(() => {
   color: #ffd080;
   cursor: pointer;
   font-weight: bold;
+}
+
+fieldset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+fieldset:disabled * {
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* --- Control Bar --- */

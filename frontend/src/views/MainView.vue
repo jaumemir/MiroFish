@@ -77,6 +77,19 @@
           @next-step="handleNextStep"
           @add-log="addLog"
         />
+        <!-- Step 3: 开始模拟 (adjust mode) -->
+        <Step3Simulation
+          v-else-if="currentStep === 3"
+          :simulationId="adjustSimulationId"
+          :projectData="projectData"
+          :graphData="graphData"
+          :systemLogs="systemLogs"
+          :adjustMode="isAdjustMode"
+          :adjustConfig="adjustData?.config ?? null"
+          @go-back="handleGoBack"
+          @next-step="handleNextStep"
+          @add-log="addLog"
+        />
       </div>
     </main>
   </div>
@@ -89,6 +102,7 @@ import { useI18n } from 'vue-i18n'
 import GraphPanel from '../components/GraphPanel.vue'
 import Step1GraphBuild from '../components/Step1GraphBuild.vue'
 import Step2EnvSetup from '../components/Step2EnvSetup.vue'
+import Step3Simulation from '../components/Step3Simulation.vue'
 import { generateOntology, importOntology, getProject, buildGraph, getTaskStatus, getGraphData, deleteProject } from '../api/graph'
 import { getPendingUpload, clearPendingUpload } from '../store/pendingUpload'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
