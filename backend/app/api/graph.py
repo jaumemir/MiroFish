@@ -57,6 +57,75 @@ def get_project(project_id: str):
     })
 
 
+@graph_bp.route('/project/<project_id>/detail', methods=['GET'])
+@require_project_owner
+def get_project_detail(project_id: str):
+    """
+    Get aggregated project detail: project metadata, files, ontology, graph and simulations.
+    """
+    from ..models.db_models import ProjectModel
+    from ..db import get_session
+
+    with get_session() as db:
+        project = db.get(ProjectModel, project_id)
+        if not project:
+            return jsonify({'error': 'Not found'}), 404
+
+        # Ontologia activa (la més recent)
+        ontology = project.ontologies[-1] if project.ontologies else None
+
+        # Graph base actiu (el més recent)
+        graph = project.graphs[-1] if project.graphs else None
+
+        # Simulacions ordenades per data de creació desc
+        simulations = []
+        sorted_sims = sorted(project.simulations, key=lambda s: s.created_at, reverse=True)
+        total = len(sorted_sims)
+        for i, sim in enumerate(sorted_sims, 1):
+            report = next(iter(sim.reports), None)
+            simulations.append({
+                'id': sim.id,
+                'ordinal': total - i + 1,
+                'status': sim.status,
+                'platform': sim.platform,
+                'rounds_total': sim.rounds_total,
+                'rounds_completed': sim.rounds_completed,
+                'graph_id': sim.graph_id,
+                'created_at': sim.created_at.isoformat() if sim.created_at else None,
+                'report_id': report.id if report else None,
+                'report_status': report.status if report else None,
+            })
+
+        return jsonify({
+            'project': {
+                'id': project.id,
+                'name': project.name,
+                'status': project.status,
+                'simulation_requirement': project.simulation_requirement,
+                'created_at': project.created_at.isoformat() if project.created_at else None,
+            },
+            'files': [{
+                'id': f.id,
+                'original_name': f.original_name,
+                'size': f.size,
+                'mime_type': f.mime_type,
+            } for f in project.files if f.file_type == 'upload'],
+            'ontology': {
+                'id': ontology.id,
+                'version': ontology.version,
+                'created_at': ontology.created_at.isoformat() if ontology.created_at else None,
+            } if ontology else None,
+            'graph': {
+                'id': graph.id,
+                'status': graph.status,
+                'node_count': graph.node_count,
+                'edge_count': graph.edge_count,
+                'backend': graph.backend,
+            } if graph else None,
+            'simulations': simulations,
+        }), 200
+
+
 @graph_bp.route('/project/list', methods=['GET'])
 def list_projects():
     """
