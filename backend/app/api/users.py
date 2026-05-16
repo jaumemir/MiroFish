@@ -115,7 +115,6 @@ def purge_user(user_id):
     """Hard delete: esborra grafs externs, storage i usuari+cascada BD."""
     from .. import get_storage
     storage = get_storage()
-    builder = GraphBuilderService()
 
     with get_session() as db:
         user = db.execute(
@@ -133,7 +132,7 @@ def purge_user(user_id):
             for graph in proj.graphs:
                 if graph.external_id:
                     try:
-                        builder.delete_graph(graph.external_id)
+                        GraphBuilderService().delete_graph(graph.external_id)
                     except Exception as exc:
                         logger.warning(
                             'purge_user: delete_graph(%s) failed: %s', graph.external_id, exc
