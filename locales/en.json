@@ -867,7 +867,8 @@
     "statusRunning": "Running",
     "statusError": "Error",
     "statusFailed": "Failed",
-    "statusPrepared": "Prepared"
+    "statusPrepared": "Prepared",
+    "backToProject": "Back to project"
   },
   "help": {
     "buttonTitle": "Help",

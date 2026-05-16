@@ -3,7 +3,8 @@
     <!-- Header -->
     <header class="app-header">
       <div class="header-left">
-        <div class="brand" @click="router.push('/')">MIROFISH</div>
+        <div class="brand" @click="navigateBack()">MIROFISH</div>
+        <button v-if="hasBackTo" class="back-to-project-btn" @click="navigateBack()">← {{ $t('projectDetail.backToProject') }}</button>
       </div>
       
       <div class="header-center">
@@ -109,12 +110,15 @@ import { generateOntology, importOntology, getProject, buildGraph, getTaskStatus
 import { getPendingUpload, clearPendingUpload } from '../store/pendingUpload'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import { useHelp } from '../composables/useHelp'
+import { useBackTo } from '../composables/useBackTo.js'
 import { getSimulationDetail } from '../api/project.js'
 
 const route = useRoute()
 const router = useRouter()
 const { t, tm } = useI18n()
 const { openHelp } = useHelp()
+const { navigateBack } = useBackTo('Home')
+const hasBackTo = computed(() => !!history.state?.backTo)
 
 // Layout State
 const viewMode = ref('split') // graph | split | workbench
@@ -548,6 +552,17 @@ onUnmounted(() => {
   letter-spacing: 1px;
   cursor: pointer;
 }
+
+.back-to-project-btn {
+  background: none;
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+}
+.back-to-project-btn:hover { color: #000; }
 
 .view-switcher {
   display: flex;

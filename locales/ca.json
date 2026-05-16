@@ -882,7 +882,8 @@
     "statusRunning": "En curs",
     "statusError": "Error",
     "statusFailed": "Fallida",
-    "statusPrepared": "Preparada"
+    "statusPrepared": "Preparada",
+    "backToProject": "Tornar al projecte"
   },
   "help": {
     "buttonTitle": "Ajuda",

@@ -816,7 +816,8 @@
     "statusRunning": "En curso",
     "statusError": "Error",
     "statusFailed": "Fallida",
-    "statusPrepared": "Preparada"
+    "statusPrepared": "Preparada",
+    "backToProject": "Volver al proyecto"
   },
   "help": {
     "buttonTitle": "Ayuda",
