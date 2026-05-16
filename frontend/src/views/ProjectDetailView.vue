@@ -234,18 +234,30 @@ function formatDate(iso) {
 }
 
 async function handleDownloadSource(file) {
-  await downloadProjectSource(props.projectId, file.original_name)
+  try {
+    await downloadProjectSource(props.projectId, file.original_name)
+  } catch (e) {
+    console.error('Download source failed:', e)
+  }
 }
 
 async function handleDownloadOntology() {
-  await downloadProjectOntology(props.projectId, detail.value.ontology?.version)
+  try {
+    await downloadProjectOntology(props.projectId, detail.value.ontology?.version)
+  } catch (e) {
+    console.error('Download ontology failed:', e)
+  }
 }
 
 async function handleUploadOntology(event) {
   const file = event.target.files[0]
   if (!file) return
-  await uploadOntology(props.projectId, file)
-  await loadDetail()
+  try {
+    await uploadOntology(props.projectId, file)
+    await loadDetail()
+  } catch (e) {
+    console.error('Upload ontology failed:', e)
+  }
 }
 
 function handleViewGraph() {
@@ -259,9 +271,13 @@ function handleViewGraph() {
 
 async function handleForceRebuild() {
   if (!confirm(t('projectDetail.confirmForceRebuild'))) return
-  await forceRebuildGraph(props.projectId)
-  graphData.value = null
-  await loadDetail()
+  try {
+    await forceRebuildGraph(props.projectId)
+    graphData.value = null
+    await loadDetail()
+  } catch (e) {
+    console.error('Force rebuild failed:', e)
+  }
 }
 
 function handleNewSimulation() {
@@ -301,20 +317,36 @@ function handleInteraction(sim) {
 
 async function handleDeleteSimulation(sim) {
   if (!confirm(t('projectDetail.confirmDelete'))) return
-  await deleteSimulation(sim.id)
-  await loadDetail()
+  try {
+    await deleteSimulation(sim.id)
+    await loadDetail()
+  } catch (e) {
+    console.error('Delete simulation failed:', e)
+  }
 }
 
 async function handleDownloadMd(sim) {
-  await downloadReportMd(sim.report_id)
+  try {
+    await downloadReportMd(sim.report_id)
+  } catch (e) {
+    console.error('Download MD failed:', e)
+  }
 }
 
 async function handleDownloadPdf(sim) {
-  await downloadReportPdf(sim.report_id)
+  try {
+    await downloadReportPdf(sim.report_id)
+  } catch (e) {
+    console.error('Download PDF failed:', e)
+  }
 }
 
 async function handleDownloadLog(sim) {
-  await downloadSimulationLog(sim.id)
+  try {
+    await downloadSimulationLog(sim.id)
+  } catch (e) {
+    console.error('Download log failed:', e)
+  }
 }
 
 function statusBadgeClass(status) {
