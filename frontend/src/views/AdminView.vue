@@ -72,6 +72,8 @@
               <td class="actions-cell">
                 <button v-if="user.status === 'pending'" class="action-btn" @click="reinvite(user)" :title="$t('admin.reinvite')">✉</button>
                 <button v-if="user.status !== 'disabled'" class="action-btn danger" @click="disableUser(user)" :title="$t('admin.disable')">✕</button>
+                <button v-if="user.status === 'disabled'" class="action-btn" @click="enableUser(user)" :title="$t('admin.enableUser')">✓</button>
+                <button v-if="user.status === 'disabled'" class="action-btn danger" @click="openDeleteModal(user)" :title="$t('admin.deleteUser')">🗑</button>
               </td>
             </tr>
           </tbody>
@@ -134,6 +136,33 @@
       </div>
     </div>
   </div>
+
+<!-- Modal d'esborrament d'usuari -->
+<div v-if="deleteModal.open" class="modal-overlay" @click.self="closeDeleteModal">
+  <div class="modal-box">
+    <h3 class="modal-title">{{ $t('admin.deleteUserTitle') }}</h3>
+    <p class="modal-warning">
+      {{ $t('admin.deleteUserWarning', { name: deleteModal.user?.name, email: deleteModal.user?.email }) }}
+    </p>
+    <input
+      v-model="deleteModal.confirmEmail"
+      type="email"
+      class="field-input"
+      :placeholder="$t('admin.deleteUserConfirmPlaceholder')"
+    />
+    <div v-if="deleteModal.error" class="error-msg">{{ deleteModal.error }}</div>
+    <div class="modal-actions">
+      <button class="action-btn" @click="closeDeleteModal">{{ $t('common.cancel') }}</button>
+      <button
+        class="start-btn danger"
+        :disabled="deleteModal.confirmEmail !== deleteModal.user?.email || deleteModal.loading"
+        @click="confirmDelete"
+      >
+        {{ deleteModal.loading ? $t('common.loading') : $t('admin.deleteUserConfirm') }}
+      </button>
+    </div>
+  </div>
+</div>
 </template>
 
 <script setup>
@@ -150,6 +179,14 @@ const showInviteForm = ref(false)
 const invite = ref({ name: '', email: '', role: 'user' })
 const inviteSuccess = ref(false)
 const inviteError = ref('')
+
+const deleteModal = ref({
+  open: false,
+  user: null,
+  confirmEmail: '',
+  loading: false,
+  error: ''
+})
 
 const configEntries = ref([])
 const configValues = ref({})
@@ -210,6 +247,33 @@ async function changeRole(user, newRole) {
 async function disableUser(user) {
   await service.delete(`/api/users/${user.id}`)
   await loadUsers()
+}
+
+async function enableUser(user) {
+  await service.patch(`/api/users/${user.id}`, { status: 'active' })
+  await loadUsers()
+}
+
+function openDeleteModal(user) {
+  deleteModal.value = { open: true, user, confirmEmail: '', loading: false, error: '' }
+}
+
+function closeDeleteModal() {
+  deleteModal.value.open = false
+}
+
+async function confirmDelete() {
+  deleteModal.value.loading = true
+  deleteModal.value.error = ''
+  try {
+    await service.delete(`/api/users/${deleteModal.value.user.id}/purge`)
+    deleteModal.value.open = false
+    await loadUsers()
+  } catch (e) {
+    deleteModal.value.error = e?.response?.data?.error || t('common.unknownError')
+  } finally {
+    deleteModal.value.loading = false
+  }
 }
 
 async function reinvite(user) {
@@ -278,4 +342,21 @@ function formatDate(iso) {
 .empty-state { padding: 48px 0; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #999; }
 .success-msg { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #22c55e; border-left: 3px solid #22c55e; padding-left: 10px; margin-top: 8px; }
 .error-msg { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #ff4500; border-left: 3px solid #ff4500; padding-left: 10px; margin-top: 8px; }
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.modal-box {
+  background: #fff; padding: 32px; max-width: 480px; width: 90%;
+  border: 1px solid #e5e5e5; display: flex; flex-direction: column; gap: 16px;
+}
+.modal-title { font-size: 1.1rem; font-weight: 700; margin: 0; }
+.modal-warning {
+  background: #fee2e2; color: #991b1b; padding: 12px 16px;
+  font-size: 0.85rem; line-height: 1.5;
+}
+.modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+.action-btn.danger { border-color: #fca5a5; color: #dc2626; }
+.start-btn.danger { background: #dc2626; }
+.start-btn.danger:hover:not(:disabled) { background: #b91c1c; }
 </style>
