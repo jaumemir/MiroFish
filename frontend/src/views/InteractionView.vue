@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="app-header">
       <div class="header-left">
-        <div class="brand" @click="router.push('/')">MIROFISH</div>
+        <div class="brand" @click="navigateBack()">MIROFISH</div>
       </div>
       
       <div class="header-center">
@@ -75,11 +75,13 @@ import { getSimulation } from '../api/simulation'
 import { getReport } from '../api/report'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import { useHelp } from '../composables/useHelp'
+import { useBackTo } from '../composables/useBackTo'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const { openHelp } = useHelp()
+const { navigateBack } = useBackTo('Home')
 
 // Props
 const props = defineProps({

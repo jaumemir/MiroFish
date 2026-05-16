@@ -417,9 +417,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { generateOntology, getProject, buildGraph, getTaskStatus, getGraphData } from '../api/graph'
 import { getPendingUpload, clearPendingUpload } from '../store/pendingUpload'
 import * as d3 from 'd3'
+import { useBackTo } from '../composables/useBackTo'
 
 const route = useRoute()
 const router = useRouter()
+const { navigateBack } = useBackTo('Home')
 
 // 当前项目ID（可能从'new'变为实际ID）
 const currentProjectId = ref(route.params.projectId)
@@ -477,7 +479,7 @@ const entityTypes = computed(() => {
 
 // 方法
 const goHome = () => {
-  router.push('/')
+  navigateBack()
 }
 
 const goToNextStep = () => {
@@ -628,8 +630,12 @@ const loadProject = async () => {
       projectData.value = response.data
       updatePhaseByStatus(response.data.status)
       
-      // 自动开始图谱构建
-      if (response.data.status === 'ontology_generated' && !response.data.graph_id) {
+      // 自动开始图谱构建 (también si falló sin graph_id pero con ontología)
+      const canRetryBuild = (
+        response.data.status === 'ontology_generated' ||
+        (response.data.status === 'failed' && response.data.ontology && !response.data.graph_id)
+      )
+      if (canRetryBuild) {
         await startBuildGraph()
       }
       
@@ -640,7 +646,7 @@ const loadProject = async () => {
       }
       
       // 加载已完成的图谱
-      if (response.data.status === 'graph_completed' && response.data.graph_id) {
+      if ((response.data.status === 'graph_completed' || response.data.status === 'failed') && response.data.graph_id) {
         currentPhase.value = 2
         await loadGraph(response.data.graph_id)
       }
@@ -667,9 +673,21 @@ const updatePhaseByStatus = (status) => {
     case 'graph_completed':
       currentPhase.value = 2
       break
-    case 'failed':
-      error.value = projectData.value?.error || '处理失败'
+    case 'failed': {
+      const data = projectData.value
+      if (data?.ontology && !data?.graph_id) {
+        // Ontologia generada però graph va fallar: recuperar a fase 0 per reintentar
+        currentPhase.value = 0
+      } else if (data?.graph_id) {
+        // Graph existent però algun pas posterior va fallar
+        currentPhase.value = 2
+      } else {
+        // Fallada prematura: sense ontologia ni graph
+        currentPhase.value = 0
+        error.value = data?.error || '处理失败'
+      }
       break
+    }
   }
 }
 

@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="app-header">
       <div class="header-left">
-        <div class="brand" @click="router.push('/')">MIROFISH</div>
+        <div class="brand" @click="navigateBack()">MIROFISH</div>
       </div>
       
       <div class="header-center">
@@ -80,9 +80,11 @@ import { getSimulation, getSimulationConfig, stopSimulation, closeSimulationEnv,
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import { useI18n } from 'vue-i18n'
 import { useHelp } from '../composables/useHelp'
+import { useBackTo } from '../composables/useBackTo'
 
 const { t } = useI18n()
 const { openHelp } = useHelp()
+const { navigateBack } = useBackTo('Home')
 const route = useRoute()
 const router = useRouter()
 

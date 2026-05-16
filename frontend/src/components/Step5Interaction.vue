@@ -88,7 +88,7 @@
             <span class="action-bar-title">{{ $t('step5.interactiveTools') }}</span>
             <span class="action-bar-subtitle mono">{{ $t('step5.agentsAvailable', { count: profiles.length }) }}</span>
           </div>
-          <button class="restart-btn" @click="router.push('/')">
+          <button class="restart-btn" @click="navigateBack()">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
@@ -422,8 +422,10 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { chatWithReport, getReport, getAgentLog } from '../api/report'
 import { interviewAgents, getSimulationProfilesRealtime } from '../api/simulation'
+import { useBackTo } from '../composables/useBackTo'
 
 const router = useRouter()
+const { navigateBack } = useBackTo('Home')
 
 const { t } = useI18n()
 
