@@ -6,6 +6,7 @@
         <router-link v-if="isAdmin" to="/admin/users" class="admin-link">
           {{ $t('home.admin') }}
         </router-link>
+        <button class="help-btn" @click="openHelp('overview')" :title="$t('help.buttonTitle')">?</button>
         <LanguageSwitcher />
         <span class="user-email">{{ authState.user?.email }}</span>
         <button class="logout-btn" @click="handleLogout" :title="$t('home.logout')">→</button>
@@ -131,6 +132,8 @@ import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import authState, { isAdmin, clearAuth } from '../store/auth'
 import service from '../api/index'
 import { setPendingUpload } from '../store/pendingUpload'
+import { useHelp } from '../composables/useHelp'
+const { openHelp } = useHelp()
 
 const router = useRouter()
 const { t } = useI18n()
@@ -307,4 +310,20 @@ function statusClass(status) {
 .remove-btn { background: none; border: none; cursor: pointer; font-size: 1rem; color: #999; }
 .input-wrapper { border: 1px solid #ddd; background: #fafafa; }
 .code-input { width: 100%; border: none; background: transparent; padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.6; resize: vertical; outline: none; box-sizing: border-box; }
+.help-btn {
+  background: none;
+  border: 1px solid #555;
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+.help-btn:hover { border-color: #fff; color: #fff; }
 </style>
