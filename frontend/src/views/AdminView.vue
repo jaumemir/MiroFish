@@ -79,6 +79,7 @@
           </tbody>
         </table>
         <div v-else class="empty-state">{{ $t('admin.noUsers') }}</div>
+        <div v-if="deleteSuccess" class="success-msg">{{ $t('admin.deleteUserSuccess') }}</div>
       </div>
 
       <!-- Tab: Configuració -->
@@ -138,7 +139,7 @@
   </div>
 
 <!-- Modal d'esborrament d'usuari -->
-<div v-if="deleteModal.open" class="modal-overlay" @click.self="closeDeleteModal">
+<div v-if="deleteModal.open" class="modal-overlay" @click.self="closeDeleteModal" @keydown.esc.window="closeDeleteModal">
   <div class="modal-box">
     <h3 class="modal-title">{{ $t('admin.deleteUserTitle') }}</h3>
     <p class="modal-warning">
@@ -179,6 +180,7 @@ const showInviteForm = ref(false)
 const invite = ref({ name: '', email: '', role: 'user' })
 const inviteSuccess = ref(false)
 const inviteError = ref('')
+const deleteSuccess = ref(false)
 
 const deleteModal = ref({
   open: false,
@@ -269,6 +271,8 @@ async function confirmDelete() {
     await service.delete(`/api/users/${deleteModal.value.user.id}/purge`)
     deleteModal.value.open = false
     await loadUsers()
+    deleteSuccess.value = true
+    setTimeout(() => { deleteSuccess.value = false }, 3000)
   } catch (e) {
     deleteModal.value.error = e?.response?.data?.error || t('common.unknownError')
   } finally {
@@ -333,6 +337,7 @@ function formatDate(iso) {
 .actions-cell { display: flex; gap: 6px; }
 .action-btn { background: none; border: 1px solid #e5e5e5; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; }
 .action-btn:hover { border-color: #000; }
+.action-btn.danger { border-color: #fca5a5; color: #dc2626; }
 .action-btn.danger:hover { border-color: #ef4444; color: #ef4444; }
 .config-form { display: flex; flex-direction: column; gap: 16px; }
 .config-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
@@ -356,7 +361,6 @@ function formatDate(iso) {
   font-size: 0.85rem; line-height: 1.5;
 }
 .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
-.action-btn.danger { border-color: #fca5a5; color: #dc2626; }
 .start-btn.danger { background: #dc2626; }
 .start-btn.danger:hover:not(:disabled) { background: #b91c1c; }
 </style>
