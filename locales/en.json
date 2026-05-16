@@ -821,5 +821,19 @@
     "deleteUserConfirmPlaceholder": "Type the email to confirm",
     "deleteUserConfirm": "Delete permanently",
     "deleteUserSuccess": "User deleted."
+  },
+  "help": {
+    "buttonTitle": "Help",
+    "modalTitle": "Help",
+    "close": "Close",
+    "learnMore": "Learn more",
+    "sections": {
+      "overview": "Overview",
+      "step1": "Step 1 — Graph Build",
+      "step2": "Step 2 — Env Setup",
+      "step3": "Step 3 — Simulation",
+      "step4": "Step 4 — Report",
+      "step5": "Step 5 — Interaction"
+    }
   }
 }

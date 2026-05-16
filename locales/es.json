@@ -73,7 +73,10 @@
     "startEngine": "Iniciar motor",
     "initializing": "Inicializando...",
     "importOntology": "Importar ontología",
-    "importOntologyHint": "Seleccionar archivo JSON de ontología"
+    "importOntologyHint": "Seleccionar archivo JSON de ontología",
+    "myProjects": "Mis Proyectos",
+    "newProject": "Nuevo Proyecto"
+
   },
   "main": {
     "layoutGraph": "Grafo",
@@ -767,5 +770,19 @@
   },
   "error": {
     "filesLostAfterRefresh": "Los archivos se perdieron al refrescar la página. Redirigiendo al inicio para volver a seleccionarlos…"
+  },
+  "help": {
+    "buttonTitle": "Ayuda",
+    "modalTitle": "Ayuda",
+    "close": "Cerrar",
+    "learnMore": "Para saber más",
+    "sections": {
+      "overview": "Visión general",
+      "step1": "Paso 1 — Grafo",
+      "step2": "Paso 2 — Entorno",
+      "step3": "Paso 3 — Simulación",
+      "step4": "Paso 4 — Informe",
+      "step5": "Paso 5 — Interacción"
+    }
   }
 }

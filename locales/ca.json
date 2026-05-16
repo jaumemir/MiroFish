@@ -835,5 +835,19 @@
   },
   "error": {
     "filesLostAfterRefresh": "Els fitxers s'han perdut en refrescar la pàgina. Redirigint a l'inici per tornar a seleccionar-los…"
+  },
+  "help": {
+    "buttonTitle": "Ajuda",
+    "modalTitle": "Ajuda",
+    "close": "Tanca",
+    "learnMore": "Per saber-ne més",
+    "sections": {
+      "overview": "Visió general",
+      "step1": "Pas 1 — Graf",
+      "step2": "Pas 2 — Entorn",
+      "step3": "Pas 3 — Simulació",
+      "step4": "Pas 4 — Informe",
+      "step5": "Pas 5 — Interacció"
+    }
   }
 }
