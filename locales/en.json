@@ -869,7 +869,8 @@
     "statusError": "Error",
     "statusFailed": "Failed",
     "statusPrepared": "Prepared",
-    "backToProject": "Back to project"
+    "backToProject": "Back to project",
+    "graphMiniature": "Graph miniature"
   },
   "help": {
     "buttonTitle": "Help",

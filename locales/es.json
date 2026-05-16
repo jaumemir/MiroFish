@@ -818,7 +818,8 @@
     "statusError": "Error",
     "statusFailed": "Fallida",
     "statusPrepared": "Preparada",
-    "backToProject": "Volver al proyecto"
+    "backToProject": "Volver al proyecto",
+    "graphMiniature": "Graph miniatura"
   },
   "help": {
     "buttonTitle": "Ayuda",

@@ -83,14 +83,25 @@
           <div v-else class="pd-empty">{{ t('projectDetail.noGraph') }}</div>
         </div>
 
-        <!-- Mini-preview graph (si hi ha espai i el graph està llest) -->
-        <div class="pd-graph-preview" v-if="detail.graph && detail.graph.status === 'ready' && graphData">
-          <GraphPanel
-            :graphData="graphData"
-            :loading="graphLoading"
-            :currentPhase="3"
-            :isSimulating="false"
-          />
+        <!-- Mini-preview graph -->
+        <div class="pd-graph-preview" v-if="detail.graph && detail.graph.status === 'ready'">
+          <div class="pd-graph-preview-label">{{ t('projectDetail.graphMiniature') }}</div>
+          <div v-if="graphLoading" class="pd-graph-loading">⟳</div>
+          <svg v-else-if="graphData" class="pd-mini-graph" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+            <line
+              v-for="(edge, i) in miniEdges"
+              :key="'e' + i"
+              :x1="edge.x1" :y1="edge.y1" :x2="edge.x2" :y2="edge.y2"
+              stroke="#ccc" stroke-width="0.8" opacity="0.6"
+            />
+            <circle
+              v-for="(node, i) in miniNodes"
+              :key="'n' + i"
+              :cx="node.x" :cy="node.y"
+              r="3" fill="#333" opacity="0.7"
+            />
+          </svg>
+          <div v-else class="pd-graph-loading">—</div>
         </div>
       </aside>
 
@@ -172,11 +183,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-import GraphPanel from '@/components/GraphPanel.vue'
 import { getGraphData } from '@/api/graph'
 import { useHelp } from '@/composables/useHelp'
 import {
@@ -201,6 +211,35 @@ const loading = ref(true)
 const error = ref(null)
 const graphData = ref(null)
 const graphLoading = ref(false)
+
+const miniNodes = computed(() => {
+  const nodes = graphData.value?.nodes
+  if (!nodes?.length) return []
+  const W = 300, H = 200, PAD = 12
+  // Posicions pseudo-aleatòries deterministes basades en l'índex
+  return nodes.map((_, i) => {
+    const angle = (i / nodes.length) * 2 * Math.PI
+    const r = 60 + 55 * ((i * 7 % 13) / 13)
+    return {
+      x: Math.round(W / 2 + r * Math.cos(angle) * ((W - PAD * 2) / 2 / (60 + 55))),
+      y: Math.round(H / 2 + r * Math.sin(angle) * ((H - PAD * 2) / 2 / (60 + 55))),
+    }
+  })
+})
+
+const miniEdges = computed(() => {
+  const edges = graphData.value?.edges
+  const nodes = graphData.value?.nodes
+  if (!edges?.length || !nodes?.length) return []
+  const nodeIndex = {}
+  nodes.forEach((n, i) => { nodeIndex[n.uuid || n.id || i] = i })
+  return edges.slice(0, 300).map(e => {
+    const si = nodeIndex[e.source_node_uuid || e.source || e.from]
+    const ti = nodeIndex[e.target_node_uuid || e.target || e.to]
+    if (si == null || ti == null || !miniNodes.value[si] || !miniNodes.value[ti]) return null
+    return { x1: miniNodes.value[si].x, y1: miniNodes.value[si].y, x2: miniNodes.value[ti].x, y2: miniNodes.value[ti].y }
+  }).filter(Boolean)
+})
 
 async function loadDetail() {
   loading.value = true
@@ -411,7 +450,10 @@ onMounted(loadDetail)
 /* Graph */
 .pd-graph-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.4rem; }
 .pd-progress { font-size: 0.72rem; color: #ff8c00; margin-top: 0.4rem; }
-.pd-graph-preview { flex: 1; min-height: 150px; border: 1px solid #eaeaea; border-radius: 4px; overflow: hidden; }
+.pd-graph-preview { border: 1px solid #eaeaea; border-radius: 4px; overflow: hidden; background: #fafafa; }
+.pd-graph-preview-label { font-size: 0.65rem; text-transform: uppercase; color: #bbb; font-weight: 700; letter-spacing: 0.06em; padding: 0.4rem 0.6rem 0; }
+.pd-mini-graph { display: block; width: 100%; height: 160px; }
+.pd-graph-loading { text-align: center; padding: 1rem; color: #ccc; font-size: 0.8rem; }
 /* Badges */
 .pd-badge { font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
 .pd-badge--ready { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
