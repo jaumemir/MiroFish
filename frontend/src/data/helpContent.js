@@ -33,7 +33,7 @@ export const helpContent = {
           ]
         },
         { type: 'h3', text: 'After ontology generation' },
-        { type: 'p', text: 'Review the inferred entity types in the panel. Click "Proceed to GraphRAG" to build the full graph. The graph panel on the left shows nodes and edges as they are created.' },
+        { type: 'p', text: 'Review the inferred entity types in the panel. Click "Proceed to GraphRAG →" to build the full graph. The graph panel on the left shows nodes and edges as they are created.' },
         { type: 'p', text: 'Minimum recommended: at least 15 distinct entity nodes to get meaningful simulations.' },
       ],
     },
@@ -237,7 +237,7 @@ export const helpContent = {
           ]
         },
         { type: 'h3', text: 'Després de la generació d\'ontologia' },
-        { type: 'p', text: 'Revisa els tipus d\'entitat inferits al panell. Clica "Proceed to GraphRAG" per construir el graf complet. El panell del graf a l\'esquerra mostra nodes i arestes a mesura que es creen.' },
+        { type: 'p', text: 'Revisa els tipus d\'entitat inferits al panell. Clica "Continuar a GraphRAG →" per construir el graf complet. El panell del graf a l\'esquerra mostra nodes i arestes a mesura que es creen.' },
         { type: 'p', text: 'Mínim recomanat: almenys 15 nodes d\'entitat distincts per obtenir simulacions significatives.' },
       ],
     },
@@ -441,7 +441,7 @@ export const helpContent = {
           ]
         },
         { type: 'h3', text: 'Después de la generación de ontología' },
-        { type: 'p', text: 'Revisa los tipos de entidad inferidos en el panel. Haz clic en "Proceed to GraphRAG" para construir el grafo completo. El panel del grafo a la izquierda muestra nodos y aristas a medida que se crean.' },
+        { type: 'p', text: 'Revisa los tipos de entidad inferidos en el panel. Haz clic en "Continuar a GraphRAG →" para construir el grafo completo. El panel del grafo a la izquierda muestra nodos y aristas a medida que se crean.' },
         { type: 'p', text: 'Mínimo recomendado: al menos 15 nodos de entidad distintos para obtener simulaciones significativas.' },
       ],
     },
