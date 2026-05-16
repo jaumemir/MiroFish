@@ -21,6 +21,7 @@
       </div>
 
       <div class="header-right">
+        <button class="help-btn" @click="openHelp('step4')" :title="$t('help.buttonTitle')">?</button>
         <LanguageSwitcher />
         <div class="step-divider"></div>
         <div class="workflow-step">
@@ -73,10 +74,12 @@ import { getProject, getGraphData } from '../api/graph'
 import { getSimulation } from '../api/simulation'
 import { getReport } from '../api/report'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
+import { useHelp } from '../composables/useHelp'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+const { openHelp } = useHelp()
 
 // Props
 const props = defineProps({
@@ -350,4 +353,21 @@ onMounted(() => {
 .panel-wrapper.left {
   border-right: 1px solid #EAEAEA;
 }
+
+.help-btn {
+  background: none;
+  border: 1px solid #ccc;
+  color: #333;
+  width: 28px;
+  height: 28px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s;
+}
+.help-btn:hover { border-color: #000; }
 </style>

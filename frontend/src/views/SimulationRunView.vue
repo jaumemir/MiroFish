@@ -21,6 +21,7 @@
       </div>
 
       <div class="header-right">
+        <button class="help-btn" @click="openHelp('step3')" :title="$t('help.buttonTitle')">?</button>
         <LanguageSwitcher />
         <div class="step-divider"></div>
         <div class="workflow-step">
@@ -62,6 +63,7 @@
           @next-step="handleNextStep"
           @add-log="addLog"
           @update-status="updateStatus"
+          @update-graph-id="(id) => { simulationGraphId = id; loadGraph(id) }"
         />
       </div>
     </main>
@@ -77,8 +79,10 @@ import { getProject, getGraphData } from '../api/graph'
 import { getSimulation, getSimulationConfig, stopSimulation, closeSimulationEnv, getEnvStatus } from '../api/simulation'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import { useI18n } from 'vue-i18n'
+import { useHelp } from '../composables/useHelp'
 
 const { t } = useI18n()
+const { openHelp } = useHelp()
 const route = useRoute()
 const router = useRouter()
 
@@ -92,6 +96,7 @@ const viewMode = ref('split')
 
 // Data State
 const currentSimulationId = ref(route.params.simulationId)
+const simulationGraphId = ref(null)  // graph_id del graf clonat per a la simulació
 // 直接在初始化时从 query 参数获取 maxRounds，确保子组件能立即获取到值
 const maxRounds = ref(route.query.maxRounds ? parseInt(route.query.maxRounds) : null)
 const minutesPerRound = ref(30) // 默认每轮30分钟
@@ -224,16 +229,22 @@ const loadSimulationData = async () => {
         addLog(t('log.timeConfigFetchFailed', { minutes: minutesPerRound.value }))
       }
       
+      // Restaurar el graph_id de simulació clonat (si existeix)
+      if (simData.graph_id_simulation) {
+        simulationGraphId.value = simData.graph_id_simulation
+      }
+
       // 获取 project 信息
       if (simData.project_id) {
         const projRes = await getProject(simData.project_id)
         if (projRes.success && projRes.data) {
           projectData.value = projRes.data
           addLog(t('log.projectLoadSuccess', { id: projRes.data.project_id }))
-          
-          // 获取 graph 数据
-          if (projRes.data.graph_id) {
-            await loadGraph(projRes.data.graph_id)
+
+          // Usar el graf clonat si existeix, si no el del projecte
+          const graphId = simulationGraphId.value || projRes.data.graph_id
+          if (graphId) {
+            await loadGraph(graphId)
           }
         }
       }
@@ -268,8 +279,9 @@ const loadGraph = async (graphId) => {
 }
 
 const refreshGraph = () => {
-  if (projectData.value?.graph_id) {
-    loadGraph(projectData.value.graph_id)
+  const graphId = simulationGraphId.value || projectData.value?.graph_id
+  if (graphId) {
+    loadGraph(graphId)
   }
 }
 
@@ -448,5 +460,22 @@ onUnmounted(() => {
 .panel-wrapper.left {
   border-right: 1px solid #EAEAEA;
 }
+
+.help-btn {
+  background: none;
+  border: 1px solid #ccc;
+  color: #333;
+  width: 28px;
+  height: 28px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s;
+}
+.help-btn:hover { border-color: #000; }
 </style>
 
