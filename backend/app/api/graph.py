@@ -69,7 +69,7 @@ def get_project_detail(project_id: str):
     with get_session() as db:
         project = db.get(ProjectModel, project_id)
         if not project:
-            return jsonify({'error': 'Not found'}), 404
+            return jsonify({'error': t('api.projectNotFound', id=project_id)}), 404
 
         # Ontologia activa (la més recent)
         ontology = project.ontologies[-1] if project.ontologies else None
