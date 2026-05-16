@@ -10,6 +10,7 @@ import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import ResetPasswordView from '../views/ResetPasswordView.vue'
 import SetPasswordView from '../views/SetPasswordView.vue'
 import AdminView from '../views/AdminView.vue'
+import ProjectDetailView from '../views/ProjectDetailView.vue'
 import authState, { isAdmin } from '../store/auth'
 
 const routes = [
@@ -21,6 +22,7 @@ const routes = [
 
   // Privades
   { path: '/',                               name: 'Home',          component: Home },
+  { path: '/project/:projectId',             name: 'ProjectDetail', component: ProjectDetailView, props: true },
   { path: '/process/:projectId',             name: 'Process',       component: Process,          props: true },
   { path: '/simulation/:simulationId',       name: 'Simulation',    component: SimulationView,   props: true },
   { path: '/simulation/:simulationId/start', name: 'SimulationRun', component: SimulationRunView, props: true },

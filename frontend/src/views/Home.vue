@@ -160,7 +160,7 @@ async function loadProjects() {
 }
 
 function openProject(project) {
-  router.push({ name: 'Process', params: { projectId: project.id } })
+  router.push({ name: 'ProjectDetail', params: { projectId: project.id } })
 }
 
 function handleFileSelect(e) {
