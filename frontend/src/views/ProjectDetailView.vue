@@ -93,9 +93,75 @@
         </div>
       </aside>
 
-      <!-- COLUMNA DRETA — placeholder fins a Task 7 -->
+      <!-- COLUMNA DRETA -->
       <main class="pd-main">
-        <div style="padding:1rem;color:#6060a0;font-size:0.85rem">Simulacions (Task 7)</div>
+        <div class="pd-sim-header">
+          <h2 class="pd-sim-title">
+            {{ t('projectDetail.simulations') }}
+            <span class="pd-sim-count">({{ detail.simulations.length }})</span>
+          </h2>
+          <button class="pd-btn pd-btn-primary" @click="handleNewSimulation">
+            + {{ t('projectDetail.newSimulation') }}
+          </button>
+        </div>
+
+        <div v-if="!detail.simulations.length" class="pd-sim-empty">
+          {{ t('projectDetail.noSimulations') }}
+        </div>
+
+        <div
+          v-for="sim in detail.simulations"
+          :key="sim.id"
+          :class="['pd-sim-card', `pd-sim-card--${sim.status}`]"
+        >
+          <div class="pd-sim-card-header">
+            <div class="pd-sim-card-title">
+              {{ t('projectDetail.simulation') }} #{{ sim.ordinal }}
+              <span :class="['pd-badge', statusBadgeClass(sim.status)]">
+                {{ t(`projectDetail.status${capitalize(sim.status)}`) }}
+              </span>
+            </div>
+            <div class="pd-sim-card-meta">
+              {{ formatDate(sim.created_at) }} ·
+              {{ sim.platform }} ·
+              {{ sim.rounds_completed }}/{{ sim.rounds_total ?? '?' }} {{ t('projectDetail.rounds') }} ·
+              Graph: {{ sim.graph_id ? sim.graph_id.slice(0, 8) + '…' : '—' }}
+            </div>
+          </div>
+
+          <div class="pd-sim-card-actions">
+            <!-- Completada / profiles_ready / config_ready -->
+            <template v-if="['completed', 'profiles_ready', 'config_ready'].includes(sim.status)">
+              <button class="pd-btn-sm" @click="handleAdjust(sim)">✏️ {{ t('projectDetail.adjust') }}</button>
+              <button class="pd-btn-sm" @click="handleRegenerateReport(sim)">↺ {{ t('projectDetail.regenerateReport') }}</button>
+              <button v-if="sim.report_id" class="pd-btn-sm pd-btn-interaction" @click="handleInteraction(sim)">
+                💬 {{ t('projectDetail.interaction') }}
+              </button>
+              <button v-if="sim.report_id" class="pd-btn-sm" @click="handleDownloadMd(sim)">{{ t('projectDetail.downloadMd') }}</button>
+              <button v-if="sim.report_id" class="pd-btn-sm" @click="handleDownloadPdf(sim)">{{ t('projectDetail.downloadPdf') }}</button>
+              <button class="pd-btn-sm" @click="handleDownloadLog(sim)">{{ t('projectDetail.downloadLog') }}</button>
+            </template>
+
+            <!-- En curs -->
+            <template v-else-if="sim.status === 'running'">
+              <span class="pd-running-indicator">⟳ {{ sim.rounds_completed }}/{{ sim.rounds_total }}</span>
+            </template>
+
+            <!-- Error / failed -->
+            <template v-else-if="['error', 'failed'].includes(sim.status)">
+              <button class="pd-btn-sm" @click="handleAdjust(sim)">✏️ {{ t('projectDetail.adjust') }}</button>
+            </template>
+
+            <!-- Prepared -->
+            <template v-else-if="sim.status === 'prepared'">
+              <button class="pd-btn-sm" @click="handleAdjust(sim)">✏️ {{ t('projectDetail.adjust') }}</button>
+            </template>
+
+            <button class="pd-btn-sm pd-btn-danger" @click="handleDeleteSimulation(sim)">
+              🗑 {{ t('projectDetail.delete') }}
+            </button>
+          </div>
+        </div>
       </main>
     </div>
 
@@ -117,6 +183,10 @@ import {
   downloadProjectOntology,
   uploadOntology,
   forceRebuildGraph,
+  deleteSimulation,
+  downloadReportMd,
+  downloadReportPdf,
+  downloadSimulationLog,
 } from '@/api/project.js'
 
 const props = defineProps({ projectId: String })
@@ -194,6 +264,77 @@ async function handleForceRebuild() {
   await loadDetail()
 }
 
+function handleNewSimulation() {
+  router.push({
+    name: 'Process',
+    params: { projectId: props.projectId },
+    query: { step: '2' },
+    state: { backTo: `/project/${props.projectId}` },
+  })
+}
+
+function handleAdjust(sim) {
+  router.push({
+    name: 'Process',
+    params: { projectId: props.projectId },
+    query: { mode: 'adjust', simulationId: sim.id },
+    state: { backTo: `/project/${props.projectId}` },
+  })
+}
+
+function handleRegenerateReport(sim) {
+  router.push({
+    name: 'Report',
+    params: { reportId: sim.report_id || sim.id },
+    query: { simulationId: sim.id },
+    state: { backTo: `/project/${props.projectId}` },
+  })
+}
+
+function handleInteraction(sim) {
+  router.push({
+    name: 'Interaction',
+    params: { reportId: sim.report_id },
+    state: { backTo: `/project/${props.projectId}` },
+  })
+}
+
+async function handleDeleteSimulation(sim) {
+  if (!confirm(t('projectDetail.confirmDelete'))) return
+  await deleteSimulation(sim.id)
+  await loadDetail()
+}
+
+async function handleDownloadMd(sim) {
+  await downloadReportMd(sim.report_id)
+}
+
+async function handleDownloadPdf(sim) {
+  await downloadReportPdf(sim.report_id)
+}
+
+async function handleDownloadLog(sim) {
+  await downloadSimulationLog(sim.id)
+}
+
+function statusBadgeClass(status) {
+  const map = {
+    completed: 'pd-badge--ready',
+    profiles_ready: 'pd-badge--ready',
+    config_ready: 'pd-badge--ready',
+    running: 'pd-badge--building',
+    error: 'pd-badge--failed',
+    failed: 'pd-badge--failed',
+    prepared: 'pd-badge--prepared',
+  }
+  return map[status] || ''
+}
+
+function capitalize(str) {
+  if (!str) return ''
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
 onMounted(loadDetail)
 </script>
 
@@ -231,4 +372,21 @@ onMounted(loadDetail)
 .pd-badge--failed { background: #3a1a1a; color: #ff8080; }
 .pd-graph-preview { flex: 1; min-height: 150px; border: 1px solid #2a2a4a; border-radius: 6px; overflow: hidden; }
 .pd-loading, .pd-error { padding: 2rem; text-align: center; opacity: 0.6; }
+.pd-sim-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.pd-sim-title { margin: 0; font-size: 1rem; color: #e0e0ff; }
+.pd-sim-count { opacity: 0.4; font-weight: normal; font-size: 0.85rem; }
+.pd-btn-primary { background: #1a3a6a; border-color: #4080c0; color: #80c0ff; }
+.pd-btn-primary:hover { background: #2a4a7a; }
+.pd-sim-empty { color: #6060a0; font-size: 0.85rem; text-align: center; padding: 2rem; }
+.pd-sim-card { border: 1px solid #2a2a4a; border-radius: 8px; padding: 0.9rem; margin-bottom: 0.75rem; background: #111120; }
+.pd-sim-card--completed, .pd-sim-card--profiles_ready, .pd-sim-card--config_ready { border-color: #2a5a2a; background: #0f1a0f; }
+.pd-sim-card--running { border-color: #5a4a00; background: #1a1500; }
+.pd-sim-card--error, .pd-sim-card--failed { border-color: #5a1a1a; background: #1a0f0f; }
+.pd-sim-card-header { margin-bottom: 0.6rem; }
+.pd-sim-card-title { font-size: 0.88rem; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.pd-sim-card-meta { font-size: 0.72rem; opacity: 0.45; margin-top: 0.2rem; }
+.pd-sim-card-actions { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; }
+.pd-badge--prepared { background: #2a2a4a; color: #a0a0ff; }
+.pd-btn-interaction { color: #ff80ff; border-color: #7a3a7a; }
+.pd-running-indicator { font-size: 0.75rem; color: #ffd080; }
 </style>
