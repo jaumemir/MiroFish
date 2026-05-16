@@ -138,8 +138,7 @@ export const helpContent = {
 
         { type: 'learnMore', links: [
           { label: 'Myers-Briggs Type Indicator (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Myers%E2%80%93Briggs_Type_Indicator' },
-          { label: 'OASIS: Open Agent Social Interaction Simulations (paper)', url: 'https://arxiv.org/abs/2411.11581' },
-          { label: 'CAMEL-AI framework', url: 'https://www.camel-ai.org/' },
+          { label: 'OASIS documentation', url: 'https://docs.oasis.camel-ai.org/introduction' },
         ]},
       ],
     },
@@ -342,9 +341,8 @@ export const helpContent = {
         },
 
         { type: 'learnMore', links: [
-          { label: 'Myers-Briggs Type Indicator (Viquipèdia)', url: 'https://ca.wikipedia.org/wiki/Indicador_de_Tipus_Myers-Briggs' },
-          { label: 'OASIS: Open Agent Social Interaction Simulations (article)', url: 'https://arxiv.org/abs/2411.11581' },
-          { label: 'CAMEL-AI framework', url: 'https://www.camel-ai.org/' },
+          { label: 'Myers-Briggs Type Indicator (Viquipèdia)', url: 'https://ca.wikipedia.org/wiki/Myers_Briggs_Type_Indicator' },
+          { label: 'Documentació OASIS', url: 'https://docs.oasis.camel-ai.org/introduction' },
         ]},
       ],
     },
@@ -547,9 +545,8 @@ export const helpContent = {
         },
 
         { type: 'learnMore', links: [
-          { label: 'Indicador de Tipos Myers-Briggs (Wikipedia)', url: 'https://es.wikipedia.org/wiki/Indicador_Myers-Briggs_del_tipo_de_personalidad' },
-          { label: 'OASIS: Open Agent Social Interaction Simulations (artículo)', url: 'https://arxiv.org/abs/2411.11581' },
-          { label: 'CAMEL-AI framework', url: 'https://www.camel-ai.org/' },
+          { label: 'Indicador de Tipos Myers-Briggs (Wikipedia)', url: 'https://es.wikipedia.org/wiki/Indicador_Myers-Briggs' },
+          { label: 'Documentación OASIS', url: 'https://docs.oasis.camel-ai.org/introduction' },
         ]},
       ],
     },
