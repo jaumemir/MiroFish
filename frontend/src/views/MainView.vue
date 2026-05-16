@@ -26,7 +26,7 @@
         <LanguageSwitcher />
         <div class="step-divider"></div>
         <div class="workflow-step">
-          <span class="step-num">Step {{ currentStep }}/5</span>
+          <span class="step-num">{{ $t('main.step') }} {{ currentStep }}/5</span>
           <span class="step-name">{{ $tm('main.stepNames')[currentStep - 1] }}</span>
         </div>
         <div class="step-divider"></div>
@@ -309,6 +309,7 @@ const loadProject = async () => {
     if (res.success) {
       projectData.value = res.data
       updatePhaseByStatus(res.data.status)
+      if (res.data.ontology) ontologyReady.value = true
       addLog(`Project loaded. Status: ${res.data.status}`)
       
       const canRetryBuild = (

@@ -87,7 +87,8 @@
       "Ejecutar simulación",
       "Generación de informe",
       "Interacción profunda"
-    ]
+    ],
+    "step": "Paso"
   },
   "step1": {
     "ontologyGeneration": "Generación de ontología",

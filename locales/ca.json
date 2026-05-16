@@ -95,7 +95,8 @@
       "Execució de la simulació",
       "Generació de l'informe",
       "Interacció profunda"
-    ]
+    ],
+    "step": "Pas"
   },
   "step1": {
     "ontologyGeneration": "Generació d'ontologia",

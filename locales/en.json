@@ -62,7 +62,8 @@
       "Run Simulation",
       "Report Generation",
       "Deep Interaction"
-    ]
+    ],
+    "step": "Step"
   },
   "step1": {
     "ontologyGeneration": "Ontology Generation",
