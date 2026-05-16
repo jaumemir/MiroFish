@@ -1,13 +1,13 @@
 <template>
   <router-view />
+  <HelpModal />
 </template>
 
 <script setup>
-// 使用 Vue Router 来管理页面
+import HelpModal from './components/HelpModal.vue'
 </script>
 
 <style>
-/* 全局样式重置 */
 * {
   margin: 0;
   padding: 0;
@@ -22,26 +22,10 @@
   background-color: #ffffff;
 }
 
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #000000; }
+::-webkit-scrollbar-thumb:hover { background: #333333; }
 
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #000000;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #333333;
-}
-
-/* 全局按钮样式 */
-button {
-  font-family: inherit;
-}
+button { font-family: inherit; }
 </style>
