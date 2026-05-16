@@ -2,10 +2,12 @@
 import logging
 from flask import request, jsonify, current_app
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from . import users_bp
 from .. import require_admin
 from ..db import get_session
-from ..models.db_models import UserModel
+from ..models.db_models import UserModel, ProjectModel
+from ..services.graph_builder import GraphBuilderService
 from ..services.auth_service import create_invitation_token
 from ..services.email_service import send_invitation_email
 
@@ -110,20 +112,40 @@ def delete_user(user_id):
 @users_bp.route('/<user_id>/purge', methods=['DELETE'])
 @require_admin
 def purge_user(user_id):
-    """Hard delete: esborra usuari i projectes en cascada."""
+    """Hard delete: esborra grafs externs, storage i usuari+cascada BD."""
     from .. import get_storage
     storage = get_storage()
+    builder = GraphBuilderService()
+
     with get_session() as db:
-        user = db.get(UserModel, user_id)
+        user = db.execute(
+            select(UserModel)
+            .where(UserModel.id == user_id)
+            .options(
+                selectinload(UserModel.projects)
+                .selectinload(ProjectModel.graphs)
+            )
+        ).scalar_one_or_none()
         if not user:
             return jsonify({'success': False, 'error': 'User not found'}), 404
+
         for proj in user.projects:
+            for graph in proj.graphs:
+                if graph.external_id:
+                    try:
+                        builder.delete_graph(graph.external_id)
+                    except Exception as exc:
+                        logger.warning(
+                            'purge_user: delete_graph(%s) failed: %s', graph.external_id, exc
+                        )
             try:
                 storage.delete_prefix(f"projects/{proj.id}")
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning('purge_user: storage.delete_prefix(%s) failed: %s', proj.id, exc)
+
         db.delete(user)
         db.commit()
+
     return jsonify({'success': True})
 
 
