@@ -1,8 +1,7 @@
 import service from './index.js'
 
 export async function getProjectDetail(projectId) {
-  const res = await service.get(`/api/graph/project/${projectId}/detail`)
-  return res.data
+  return await service.get(`/api/graph/project/${projectId}/detail`)
 }
 
 export async function downloadProjectSource(projectId, filename) {
@@ -33,18 +32,15 @@ export async function uploadOntology(projectId, file) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('project_id', projectId)
-  const res = await service.post('/api/graph/ontology/import', formData)
-  return res.data
+  return await service.post('/api/graph/ontology/import', formData)
 }
 
 export async function forceRebuildGraph(projectId) {
-  const res = await service.post('/api/graph/build', { project_id: projectId, force: true })
-  return res.data
+  return await service.post('/api/graph/build', { project_id: projectId, force: true })
 }
 
 export async function deleteSimulation(simulationId) {
-  const res = await service.delete(`/api/simulation/${simulationId}`)
-  return res.data
+  return await service.delete(`/api/simulation/${simulationId}`)
 }
 
 export async function downloadReportMd(reportId) {
@@ -86,6 +82,5 @@ export async function downloadSimulationLog(simulationId) {
 }
 
 export async function getSimulationDetail(simulationId) {
-  const res = await service.get(`/api/simulation/${simulationId}/detail`)
-  return res.data
+  return await service.get(`/api/simulation/${simulationId}/detail`)
 }
