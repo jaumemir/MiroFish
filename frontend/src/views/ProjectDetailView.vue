@@ -55,8 +55,8 @@
         <div class="pd-card">
           <div class="pd-card-header">
             <div class="pd-card-label">{{ t('projectDetail.graphBase') }}</div>
-            <span v-if="detail.graph" :class="['pd-badge', `pd-badge--${detail.graph.status}`]">
-              {{ t(`projectDetail.graphStatus.${detail.graph.status}`) }}
+            <span v-if="detail.graph" :class="['pd-badge', 'pd-badge--' + detail.graph.status]">
+              {{ t('projectDetail.graphStatus.' + detail.graph.status) }}
             </span>
           </div>
           <template v-if="detail.graph">
@@ -113,13 +113,13 @@
         <div
           v-for="sim in detail.simulations"
           :key="sim.id"
-          :class="['pd-sim-card', `pd-sim-card--${sim.status}`]"
+          :class="['pd-sim-card', 'pd-sim-card--' + sim.status]"
         >
           <div class="pd-sim-card-header">
             <div class="pd-sim-card-title">
               {{ t('projectDetail.simulation') }} #{{ sim.ordinal }}
               <span :class="['pd-badge', statusBadgeClass(sim.status)]">
-                {{ t(`projectDetail.status${capitalize(sim.status)}`) }}
+                {{ t('projectDetail.status' + capitalize(sim.status)) }}
               </span>
             </div>
             <div class="pd-sim-card-meta">
