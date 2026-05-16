@@ -71,6 +71,8 @@
           :projectData="projectData"
           :graphData="graphData"
           :systemLogs="systemLogs"
+          :adjustMode="isAdjustMode"
+          :adjustProfiles="adjustData?.profiles ?? null"
           @go-back="handleGoBack"
           @next-step="handleNextStep"
           @add-log="addLog"
@@ -91,6 +93,7 @@ import { generateOntology, importOntology, getProject, buildGraph, getTaskStatus
 import { getPendingUpload, clearPendingUpload } from '../store/pendingUpload'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import { useHelp } from '../composables/useHelp'
+import { getSimulationDetail } from '../api/project.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -120,6 +123,11 @@ const systemLogs = ref([])
 // Polling timers
 let pollTimer = null
 let graphPollTimer = null
+
+// Adjust mode
+const isAdjustMode = computed(() => route.query.mode === 'adjust')
+const adjustSimulationId = computed(() => route.query.simulationId)
+const adjustData = ref(null)
 
 // --- Computed Layout Styles ---
 const leftPanelStyle = computed(() => {
@@ -195,6 +203,18 @@ const initProject = async () => {
     await handleNewProject()
   } else {
     await loadProject()
+  }
+
+  // Adjust mode: load simulation detail and jump to step 2
+  if (isAdjustMode.value && adjustSimulationId.value) {
+    try {
+      adjustData.value = await getSimulationDetail(adjustSimulationId.value)
+      currentStep.value = 2
+      addLog(`Adjust mode: loaded simulation ${adjustSimulationId.value}`)
+    } catch (e) {
+      console.error('Failed to load simulation detail:', e)
+      addLog(`Adjust mode: failed to load simulation detail`)
+    }
   }
 }
 

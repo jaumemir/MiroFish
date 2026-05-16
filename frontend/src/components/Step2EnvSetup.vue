@@ -1,6 +1,13 @@
 <template>
   <div class="env-setup-panel">
     <div class="scroll-container">
+      <!-- Adjust mode banner -->
+      <div v-if="props.adjustMode && !editingSection" class="adjust-banner">
+        📋 {{ $t('adjust.readOnlyMode') }} —
+        <button class="adjust-edit-btn" @click="editingSection = true">
+          ✏️ {{ $t('adjust.editSection') }}
+        </button>
+      </div>
       <!-- Step 01: 模拟实例 -->
       <div class="step-card" :class="{ 'active': phase === 0, 'completed': phase > 0 }">
         <div class="card-header">
@@ -794,7 +801,9 @@ const props = defineProps({
   simulationId: String,  // 从父组件传入
   projectData: Object,
   graphData: Object,
-  systemLogs: Array
+  systemLogs: Array,
+  adjustMode: { type: Boolean, default: false },
+  adjustProfiles: { type: Array, default: null },
 })
 
 const emit = defineEmits(['go-back', 'next-step', 'add-log', 'update-status'])
@@ -842,6 +851,15 @@ const generateConfigTaskId = ref(null)
 // Step 03 inline editing state
 const step3EditMode = ref(false)
 const configSaving = ref(false)
+
+// Adjust mode
+const editingSection = ref(false)
+
+watch(() => props.adjustProfiles, (newProfiles) => {
+  if (newProfiles && props.adjustMode) {
+    profiles.value = newProfiles
+  }
+}, { immediate: true })
 
 // Watch stage to update phase.
 // In the F2A/B flow, config is generated in a separate step (generate-config endpoint),
@@ -1476,6 +1494,24 @@ onUnmounted(() => {
   flex-direction: column;
   background: #FAFAFA;
   font-family: 'Space Grotesk', 'Noto Sans SC', system-ui, sans-serif;
+}
+
+.adjust-banner {
+  background: #1e2e1e;
+  border: 1px solid #3a6a3a;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.82rem;
+  color: #80c0ff;
+}
+
+.adjust-edit-btn {
+  background: transparent;
+  border: none;
+  color: #ffd080;
+  cursor: pointer;
+  font-weight: bold;
 }
 
 .scroll-container {

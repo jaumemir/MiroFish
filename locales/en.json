@@ -72,10 +72,16 @@
     "ontologyDesc": "LLM analyzes document content and simulation requirements, extracts reality seeds, and auto-generates a suitable ontology structure",
     "ontologyFallbackPersonName": "Person",
     "ontologyFallbackPersonDesc": "Any individual person not fitting other specific person types.",
-    "ontologyFallbackPersonExamples": ["ordinary citizen", "anonymous netizen"],
+    "ontologyFallbackPersonExamples": [
+      "ordinary citizen",
+      "anonymous netizen"
+    ],
     "ontologyFallbackOrgName": "Organization",
     "ontologyFallbackOrgDesc": "Any organization not fitting other specific organization types.",
-    "ontologyFallbackOrgExamples": ["small business", "community group"],
+    "ontologyFallbackOrgExamples": [
+      "small business",
+      "community group"
+    ],
     "analyzingDocs": "Analyzing documents...",
     "graphRagBuild": "GraphRAG Build",
     "graphRagDesc": "Based on the generated ontology, documents are auto-chunked and sent to Zep to build a knowledge graph, extracting entities and relations, forming temporal memory and community summaries",
@@ -447,7 +453,7 @@
     "reportGenerateFailed": "Report generation failed",
     "sectionNotFound": "Section not found: section_{index}.md",
     "reportProgressNotAvail": "Report not found or progress unavailable: {id}",
-    "requireAgentId": "Please provide agent_id",
+    "requireAgentId": "agent user_id is required",
     "requirePrompt": "Please provide a prompt (interview question)",
     "invalidInterviewPlatform": "Platform must be either 'twitter' or 'reddit'",
     "envNotRunning": "Simulation environment not running or closed. Ensure simulation is complete and in command-wait mode.",
@@ -465,7 +471,6 @@
     "requireFields": "No fields provided",
     "requireEntityUuid": "source_entity_uuid is required",
     "requireProfilesReady": "Simulation must be in profiles_ready status (current: {status})",
-    "requireAgentId": "agent user_id is required",
     "agentNotFound": "Agent user_id={user_id} not found",
     "agentNoSourceEntity": "Agent has no source_entity_uuid — cannot regenerate",
     "cannotCreateAgentInStatus": "Cannot create agent when simulation status is {status}",
@@ -877,5 +882,10 @@
       "step4": "Step 4 — Report",
       "step5": "Step 5 — Interaction"
     }
+  },
+  "adjust": {
+    "readOnlyMode": "Read-only mode",
+    "editSection": "Edit this section",
+    "launchSimulation": "▶ Launch simulation"
   }
 }

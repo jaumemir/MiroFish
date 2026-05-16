@@ -1,5 +1,12 @@
 <template>
   <div class="simulation-panel">
+    <!-- Adjust mode banner -->
+    <div v-if="props.adjustMode && !editingSection" class="adjust-banner">
+      📋 {{ $t('adjust.readOnlyMode') }} —
+      <button class="adjust-edit-btn" @click="editingSection = true">
+        ✏️ {{ $t('adjust.editSection') }}
+      </button>
+    </div>
     <!-- Top Control Bar -->
     <div class="control-bar">
       <div class="status-group">
@@ -317,7 +324,9 @@ const props = defineProps({
   },
   projectData: Object,
   graphData: Object,
-  systemLogs: Array
+  systemLogs: Array,
+  adjustMode: { type: Boolean, default: false },
+  adjustConfig: { type: Object, default: null },
 })
 
 const emit = defineEmits(['go-back', 'next-step', 'add-log', 'update-status', 'update-graph-id'])
@@ -335,6 +344,18 @@ const runStatus = ref({})
 const allActions = ref([]) // 所有动作（增量累积）
 const actionIds = ref(new Set()) // 用于去重的动作ID集合
 const scrollContainer = ref(null)
+
+// Adjust mode
+const editingSection = ref(false)
+
+watch(() => props.adjustConfig, (config) => {
+  if (config && props.adjustMode) {
+    // Pre-fill runStatus with config data if available
+    if (config.max_rounds != null) {
+      runStatus.value = { ...runStatus.value, total_rounds: config.max_rounds }
+    }
+  }
+}, { immediate: true })
 
 // Computed
 // 按时间顺序显示动作（最新的在最后面，即底部）
@@ -762,6 +783,24 @@ onUnmounted(() => {
   background: #FFFFFF;
   font-family: 'Space Grotesk', 'Noto Sans SC', system-ui, sans-serif;
   overflow: hidden;
+}
+
+.adjust-banner {
+  background: #1e2e1e;
+  border: 1px solid #3a6a3a;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.5rem 0.75rem 0;
+  font-size: 0.82rem;
+  color: #80c0ff;
+}
+
+.adjust-edit-btn {
+  background: transparent;
+  border: none;
+  color: #ffd080;
+  cursor: pointer;
+  font-weight: bold;
 }
 
 /* --- Control Bar --- */
