@@ -69,7 +69,7 @@ onUnmounted(() => {
 /* Light theme (default - for white header backgrounds) */
 .switcher-trigger {
   background: transparent;
-  color: #fff;
+  color: #333;
   border: 1px solid #CCC;
   padding: 4px 12px;
   font-family: 'JetBrains Mono', monospace;

@@ -326,4 +326,13 @@ function statusClass(status) {
   transition: border-color 0.15s, color 0.15s;
 }
 .help-btn:hover { border-color: #fff; color: #fff; }
+
+/* LanguageSwitcher sobre navbar negra */
+.navbar :deep(.switcher-trigger) {
+  color: #ffffff;
+  border-color: #555;
+}
+.navbar :deep(.switcher-trigger:hover) {
+  border-color: #999;
+}
 </style>
