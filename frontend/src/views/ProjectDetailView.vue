@@ -207,13 +207,13 @@ async function loadDetail() {
   error.value = null
   try {
     detail.value = await getProjectDetail(props.projectId)
-    if (detail.value?.graph?.status === 'ready' && detail.value.graph.id) {
-      await loadGraphPreview(detail.value.graph.id)
-    }
   } catch (e) {
     error.value = e.message
   } finally {
     loading.value = false
+  }
+  if (detail.value?.graph?.status === 'ready' && detail.value.graph.id) {
+    loadGraphPreview(detail.value.graph.id)
   }
 }
 
@@ -221,9 +221,7 @@ async function loadGraphPreview(graphId) {
   graphLoading.value = true
   try {
     const response = await getGraphData(graphId)
-    if (response.success) {
-      graphData.value = response.data
-    }
+    graphData.value = response.data ?? null
   } catch (e) {
     console.warn('Graph preview load failed:', e)
   } finally {
