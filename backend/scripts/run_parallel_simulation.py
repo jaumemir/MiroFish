@@ -1034,10 +1034,34 @@ def create_model(config: Dict[str, Any], use_boost: bool = False):
     Detects Azure OpenAI URLs (cognitiveservices.azure.com or openai.azure.com)
     and uses ModelPlatformType.AZURE with the correct env vars; otherwise falls
     back to ModelPlatformType.OPENAI for standard OpenAI-compatible endpoints.
+
+    LLM_CONTEXT_WINDOW sets the token budget for ScoreBasedContextCreator so
+    camel-ai prunes agent memory before it exceeds the deployment's real limit.
+    Default: 128000. Set lower (e.g. 32000) for deployments with tighter limits.
     """
-    boost_api_key = os.environ.get("LLM_BOOST_API_KEY", "")
-    boost_base_url = os.environ.get("LLM_BOOST_BASE_URL", "")
-    boost_model = os.environ.get("LLM_BOOST_MODEL_NAME", "")
+    # Try to read from DB first (DB > env precedence)
+    try:
+        import sys as _sys
+        import os as _os
+        _scripts_dir = _os.path.dirname(_os.path.abspath(__file__))
+        _backend_dir = _os.path.join(_scripts_dir, '..')
+        if _backend_dir not in _sys.path:
+            _sys.path.insert(0, _backend_dir)
+        from app.config import Config as _Config
+        from app.db import init_db as _init_db
+        from app.config_db import get_config as _get_config
+        _init_db(_Config.DATABASE_URL)
+        _boost_api_key_bd = _get_config('llm.boost.api_key', '') or ''
+        _boost_base_url_bd = _get_config('llm.boost.base_url', '') or ''
+        _boost_model_bd = _get_config('llm.boost.model_name', '') or ''
+    except Exception:
+        _boost_api_key_bd = ''
+        _boost_base_url_bd = ''
+        _boost_model_bd = ''
+
+    boost_api_key = _boost_api_key_bd or os.environ.get("LLM_BOOST_API_KEY", "")
+    boost_base_url = _boost_base_url_bd or os.environ.get("LLM_BOOST_BASE_URL", "")
+    boost_model = _boost_model_bd or os.environ.get("LLM_BOOST_MODEL_NAME", "")
     has_boost_config = bool(boost_api_key)
 
     if use_boost and has_boost_config:
@@ -1067,6 +1091,18 @@ def create_model(config: Dict[str, Any], use_boost: bool = False):
         )
     )
 
+    # When the model_type string is not a known camel-ai ModelType enum value
+    # (e.g. a custom Azure deployment name), camel-ai falls back to
+    # token_limit=999_999_999, so ScoreBasedContextCreator never prunes agent
+    # memory. Setting max_tokens in model_config_dict forces token_limit to a
+    # real value (base_model.token_limit = model_config_dict.get("max_tokens")
+    # or model_type.token_limit). Note: this is the context budget for pruning,
+    # not the max_tokens sent in the API request — camel-ai uses this field for
+    # both purposes, so we leave it at the context window size and let the model
+    # decide how many tokens to generate in the response.
+    context_window = int(os.environ.get("LLM_CONTEXT_WINDOW", "128000"))
+    model_config = {"max_tokens": context_window}
+
     if is_azure:
         # AzureOpenAIModel reads these specific env vars
         os.environ["AZURE_OPENAI_API_KEY"] = llm_api_key
@@ -1076,11 +1112,12 @@ def create_model(config: Dict[str, Any], use_boost: bool = False):
             os.environ["AZURE_API_VERSION"] = api_version
         os.environ["AZURE_DEPLOYMENT_NAME"] = llm_model
 
-        print(f"{config_label} [Azure] deployment={llm_model}, endpoint={clean_url[:60] if clean_url else 'default'}...")
+        print(f"{config_label} [Azure] deployment={llm_model}, endpoint={clean_url[:60] if clean_url else 'default'}, context_window={context_window}...")
 
         return ModelFactory.create(
             model_platform=ModelPlatformType.AZURE,
             model_type=llm_model,
+            model_config_dict=model_config,
             api_key=llm_api_key,
             url=clean_url or None,
             api_version=api_version,
@@ -1091,11 +1128,12 @@ def create_model(config: Dict[str, Any], use_boost: bool = False):
         if clean_url:
             os.environ["OPENAI_API_BASE_URL"] = clean_url
 
-        print(f"{config_label} [OpenAI] model={llm_model}, base_url={clean_url[:60] if clean_url else 'default'}...")
+        print(f"{config_label} [OpenAI] model={llm_model}, base_url={clean_url[:60] if clean_url else 'default'}, context_window={context_window}...")
 
         return ModelFactory.create(
             model_platform=ModelPlatformType.OPENAI,
             model_type=llm_model,
+            model_config_dict=model_config,
             api_key=llm_api_key,
             url=clean_url or None,
         )
