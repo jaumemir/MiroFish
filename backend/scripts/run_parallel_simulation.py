@@ -1054,10 +1054,16 @@ def create_model(config: Dict[str, Any], use_boost: bool = False):
         _boost_api_key_bd = _get_config('llm.boost.api_key', '') or ''
         _boost_base_url_bd = _get_config('llm.boost.base_url', '') or ''
         _boost_model_bd = _get_config('llm.boost.model_name', '') or ''
+        _std_api_key_bd = _get_config('llm.api_key', '') or ''
+        _std_base_url_bd = _get_config('llm.base_url', '') or ''
+        _std_model_bd = _get_config('llm.model_name', '') or ''
     except Exception:
         _boost_api_key_bd = ''
         _boost_base_url_bd = ''
         _boost_model_bd = ''
+        _std_api_key_bd = ''
+        _std_base_url_bd = ''
+        _std_model_bd = ''
 
     boost_api_key = _boost_api_key_bd or os.environ.get("LLM_BOOST_API_KEY", "")
     boost_base_url = _boost_base_url_bd or os.environ.get("LLM_BOOST_BASE_URL", "")
@@ -1070,9 +1076,9 @@ def create_model(config: Dict[str, Any], use_boost: bool = False):
         llm_model_env = boost_model or os.environ.get("LLM_MODEL_NAME", "")
         config_label = "[Boost LLM]"
     else:
-        llm_api_key = os.environ.get("LLM_API_KEY", "")
-        raw_url = os.environ.get("LLM_BASE_URL", "")
-        llm_model_env = os.environ.get("LLM_MODEL_NAME", "")
+        llm_api_key = _std_api_key_bd or os.environ.get("LLM_API_KEY", "")
+        raw_url = _std_base_url_bd or os.environ.get("LLM_BASE_URL", "")
+        llm_model_env = _std_model_bd or os.environ.get("LLM_MODEL_NAME", "")
         config_label = "[Standard LLM]"
 
     # Parse Azure URL: extract deployment name, clean base_url, and api-version
