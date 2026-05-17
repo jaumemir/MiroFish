@@ -74,7 +74,15 @@ def test_returns_default_when_value_is_none(app_ctx):
 def test_max_tokens_zero_returns_none(app_ctx):
     from backend.app.config_db import get_config
     _insert_config('llm.max_tokens', '0', 'int')
-    assert get_config('llm.max_tokens', None) is None
+    assert get_config('llm.max_tokens', 9999) is None
+
+
+def test_casts_bool_value(app_ctx):
+    from backend.app.config_db import get_config
+    _insert_config('feature.enabled', 'true', 'bool')
+    assert get_config('feature.enabled', False) is True
+    _insert_config('feature.enabled', 'false', 'bool')
+    assert get_config('feature.enabled', True) is False
 
 
 def test_returns_default_on_db_error(app_ctx):
