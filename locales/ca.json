@@ -1,6 +1,7 @@
 {
   "common": {
     "confirm": "Confirma",
+    "accept": "Accepta",
     "cancel": "Cancel·la",
     "save": "Desa",
     "loading": "Carregant...",
@@ -73,7 +74,17 @@
     "startEngine": "Inicia el motor",
     "initializing": "Inicialitzant...",
     "importOntology": "Importa ontologia",
-    "importOntologyHint": "Selecciona el fitxer JSON d'ontologia"
+    "importOntologyHint": "Selecciona el fitxer JSON d'ontologia",
+    "myProjects": "Els meus projectes",
+    "newProject": "Nou projecte",
+    "noProjects": "Encara no hi ha projectes. Crea'n el primer.",
+    "admin": "Administració",
+    "logout": "Tanca la sessió",
+    "rename": "Reanomena",
+    "delete": "Elimina",
+    "confirmDelete": "Eliminar el projecte?",
+    "supportedFormatsShort": "PDF / MD / TXT",
+    "startEngineShort": "INICIA"
   },
   "main": {
     "layoutGraph": "Graf",
@@ -85,7 +96,8 @@
       "Execució de la simulació",
       "Generació de l'informe",
       "Interacció profunda"
-    ]
+    ],
+    "step": "Pas"
   },
   "step1": {
     "ontologyGeneration": "Generació d'ontologia",
@@ -95,10 +107,16 @@
     "ontologyDesc": "El LLM analitza el contingut del document i els requisits de simulació, extreu llavors de realitat i auto-genera una estructura d'ontologia adequada",
     "ontologyFallbackPersonName": "Persona",
     "ontologyFallbackPersonDesc": "Qualsevol persona individual que no encaixa en altres tipus de persona més específics.",
-    "ontologyFallbackPersonExamples": ["ciutadà ordinari", "internauta anònim"],
+    "ontologyFallbackPersonExamples": [
+      "ciutadà ordinari",
+      "internauta anònim"
+    ],
     "ontologyFallbackOrgName": "Organització",
     "ontologyFallbackOrgDesc": "Qualsevol organització que no encaixa en altres tipus d'organització més específics.",
-    "ontologyFallbackOrgExamples": ["petita empresa", "grup comunitari"],
+    "ontologyFallbackOrgExamples": [
+      "petita empresa",
+      "grup comunitari"
+    ],
     "analyzingDocs": "Analitzant documents...",
     "graphRagBuild": "Construcció de GraphRAG",
     "graphRagDesc": "Basant-se en l'ontologia generada, els documents es divideixen automàticament en fragments i s'envien a Zep per construir un graf de coneixement, extraient entitats i relacions, formant memòria temporal i resums de comunitat",
@@ -223,6 +241,9 @@
     "selectEntityType": "Tipus d'entitat",
     "selectEntity": "Selecciona entitat",
     "extraInstructions": "Instruccions addicionals (opcional)",
+    "extraInstructionsLabel": "Instruccions per al LLM",
+    "editGuidanceHint": "Els canvis de dalt i aquestes instruccions guiaran el LLM per regenerar el perfil complet de forma coherent.",
+    "regeneratingAgent": "Regenerant...",
     "manuallyEditedBadge": "Editat",
     "generatingConfig": "Generant configuració de comportament...",
     "cloneFrom": "Clona d'una simulació anterior",
@@ -247,7 +268,15 @@
     "agentField_mbti": "MBTI",
     "agentField_country": "País",
     "agentField_profession": "Professió",
-    "agentField_stance": "Postura"
+    "agentField_stance": "Postura",
+    "stanceSupportive": "A favor",
+    "stanceOpposing": "En contra",
+    "stanceNeutral": "Neutral",
+    "stanceObserver": "Observador",
+    "stance_supportive": "A favor",
+    "stance_opposing": "En contra",
+    "stance_neutral": "Neutral",
+    "stance_observer": "Observador"
   },
   "step3": {
     "startGenerateReport": "Genera l'informe",
@@ -278,7 +307,14 @@
     "forceStopSuccess": "Simulació aturada forçosament",
     "forceStopFailed": "Error en l'aturada forçosa: {error}",
     "startGenerateReportBtn": "Genera l'informe",
-    "generatingReportBtn": "Iniciant..."
+    "generatingReportBtn": "Iniciant...",
+    "stopSimBtn": "Atura la simulació",
+    "stoppingSimBtn": "Aturant...",
+    "resumeSimBtn": "Reprèn la simulació",
+    "resumingSim": "Reprenent la simulació...",
+    "simResumed": "Simulació represa",
+    "resumeFailed": "Error en reprendre: {error}",
+    "resumeException": "Excepció en reprendre: {error}"
   },
   "step4": {
     "generatingSection": "Generant {title}...",
@@ -759,13 +795,142 @@
     "subtitle": "// Accés autenticat requerit",
     "username": "Usuari",
     "usernamePlaceholder": "demo",
+    "email": "Correu electrònic",
+    "emailPlaceholder": "el-teu{'@'}email.com",
     "password": "Contrasenya",
     "passwordPlaceholder": "••••••••",
     "submit": "Entrar",
     "loading": "Autenticant...",
-    "invalidCredentials": "Usuari o contrasenya incorrectes"
+    "invalidCredentials": "Usuari o contrasenya incorrectes",
+    "forgotPassword": "Has oblidat la contrasenya?",
+    "accountActivated": "Compte activat. Ja pots iniciar sessió."
+  },
+  "forgotPassword": {
+    "title": "Contrasenya oblidada",
+    "subtitle": "Introdueix el teu correu i t'enviarem un enllaç per restablir-la.",
+    "submit": "Envia l'enllaç de restabliment",
+    "sent": "Si existeix un compte amb aquest correu, rebràs un enllaç de restabliment en breu."
+  },
+  "resetPassword": {
+    "title": "Restableix la contrasenya",
+    "newPassword": "Nova contrasenya",
+    "confirmPassword": "Confirma la contrasenya",
+    "submit": "Estableix la nova contrasenya",
+    "done": "Contrasenya actualitzada. Ja pots iniciar sessió.",
+    "goToLogin": "Ves a l'inici de sessió",
+    "invalidToken": "Aquest enllaç no és vàlid o ha caducat.",
+    "passwordMismatch": "Les contrasenyes no coincideixen."
+  },
+  "setPassword": {
+    "title": "Benvingut/da a MiroFish",
+    "newPassword": "Tria una contrasenya",
+    "submit": "Activa el compte",
+    "done": "Compte activat! Redirigint a l'inici de sessió...",
+    "invalidToken": "Aquest enllaç d'invitació no és vàlid o ha caducat."
+  },
+  "admin": {
+    "users": "Usuaris",
+    "config": "Configuració",
+    "executions": "Historial d'execucions",
+    "inviteUser": "Convida usuari",
+    "name": "Nom",
+    "email": "Correu electrònic",
+    "role": "Rol",
+    "status": "Estat",
+    "created": "Creat",
+    "actions": "Accions",
+    "send": "Envia",
+    "inviteSent": "Invitació enviada.",
+    "reinvite": "Reenvia la invitació",
+    "disable": "Desactiva l'usuari",
+    "noUsers": "No s'han trobat usuaris.",
+    "noConfig": "No hi ha entrades de configuració.",
+    "configSaved": "Configuració desada.",
+    "noExecutions": "No s'han trobat execucions.",
+    "user": "Usuari",
+    "project": "Projecte",
+    "platform": "Plataforma",
+    "rounds": "Rondes",
+    "enableUser": "Reactiva",
+    "deleteUser": "Esborra",
+    "deleteUserTitle": "Esborra usuari",
+    "deleteUserWarning": "Aquesta acció és irreversible. S'esborraran tots els projectes, simulacions, grafs i fitxers de {name} ({email}).",
+    "deleteUserConfirmPlaceholder": "Escriu l'email per confirmar",
+    "deleteUserConfirm": "Esborra definitivament",
+    "deleteUserSuccess": "Usuari esborrat."
   },
   "error": {
     "filesLostAfterRefresh": "Els fitxers s'han perdut en refrescar la pàgina. Redirigint a l'inici per tornar a seleccionar-los…"
+  },
+  "projectDetail": {
+    "backToHome": "Tornar als meus projectes",
+    "project": "Projecte",
+    "simulationQuestion": "Pregunta de simulació",
+    "sourceFile": "Fitxer inicial",
+    "ontology": "Ontologia",
+    "noOntology": "Sense ontologia",
+    "uploadNewOntology": "Pujar nova ontologia",
+    "graphBase": "Graph base",
+    "entities": "entitats",
+    "viewGraph": "Veure graph",
+    "forceRebuild": "Forçar regeneració",
+    "retry": "Reintentar",
+    "graphBuilding": "Construint...",
+    "noGraph": "Sense graph generat",
+    "confirmForceRebuild": "Esborrarà el graph actual i el reconstruirà des de zero. Continuar?",
+    "graphStatus": {
+      "ready": "Completat",
+      "building": "En curs",
+      "failed": "Error"
+    },
+    "simulations": "Simulacions",
+    "newSimulation": "Nova simulació",
+    "simulation": "Simulació",
+    "rounds": "rondes",
+    "adjust": "Ajustar",
+    "regenerateReport": "Re-generar informe",
+    "interaction": "Interacció",
+    "downloadMd": "↓ MD",
+    "downloadPdf": "↓ PDF",
+    "downloadLog": "↓ Log",
+    "delete": "Esborrar",
+    "confirmDelete": "Esborrar aquesta simulació? Aquesta acció no es pot desfer.",
+    "noSimulations": "Sense simulacions. Crea'n una nova per començar.",
+    "statusCreated": "Creada",
+    "statusPreparing": "Preparant",
+    "statusConfiguring": "Configurant",
+    "statusReady": "Llesta",
+    "statusCompleted": "Completada",
+    "statusProfiles_ready": "Perfils llestos",
+    "statusConfig_ready": "Config llesta",
+    "statusRunning": "En curs",
+    "statusPaused": "En pausa",
+    "statusStopped": "Finalitzada",
+    "viewRunning": "Veure simulació",
+    "continueSimulation": "Continuar",
+    "statusError": "Error",
+    "statusFailed": "Fallida",
+    "statusPrepared": "Preparada",
+    "backToProject": "Tornar al projecte",
+    "graphMiniature": "Graph miniatura"
+  },
+  "help": {
+    "buttonTitle": "Ajuda",
+    "modalTitle": "Ajuda",
+    "close": "Tanca",
+    "learnMore": "Per saber-ne més",
+    "sections": {
+      "overview": "Visió general",
+      "step1": "Pas 1 — Graf",
+      "step2": "Pas 2 — Entorn",
+      "step3": "Pas 3 — Simulació",
+      "step4": "Pas 4 — Informe",
+      "step5": "Pas 5 — Interacció"
+    }
+  },
+  "adjust": {
+    "readOnlyMode": "Mode consulta",
+    "editSection": "Editar aquesta secció",
+    "launchSimulation": "▶ Llançar simulació"
   }
 }

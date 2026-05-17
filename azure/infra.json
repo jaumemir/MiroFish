@@ -1,0 +1,266 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.42.1.51946",
+      "templateHash": "16049340286981032335"
+    }
+  },
+  "parameters": {
+    "projectName": {
+      "type": "string",
+      "defaultValue": "mirofish",
+      "metadata": {
+        "description": "Nom base del projecte"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Localitzacio Azure dels recursos"
+      }
+    },
+    "postgresAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Contrasenya de l-administrador de PostgreSQL"
+      }
+    },
+    "postgresAdminUser": {
+      "type": "string",
+      "defaultValue": "mirofish",
+      "metadata": {
+        "description": "Usuari administrador de PostgreSQL"
+      }
+    },
+    "postgresSku": {
+      "type": "string",
+      "defaultValue": "Standard_B1ms",
+      "metadata": {
+        "description": "SKU de PostgreSQL (Standard_B1ms per dev; Standard_D2s_v3 per pro)"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Nom del Storage Account existent (o buit per crear-ne un de nou: <projectName>store)"
+      }
+    }
+  },
+  "variables": {
+    "effectiveStorageAccountName": "[if(empty(parameters('storageAccountName')), format('{0}store', replace(parameters('projectName'), '-', '')), parameters('storageAccountName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2023-01-01-preview",
+      "name": "[format('{0}acr', parameters('projectName'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Basic"
+      },
+      "properties": {
+        "adminUserEnabled": true
+      }
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}-env', parameters('projectName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "azure-monitor"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('effectiveStorageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments/storages",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}', format('{0}-env', parameters('projectName')), 'uploads')]",
+      "properties": {
+        "azureFile": {
+          "accountName": "[variables('effectiveStorageAccountName')]",
+          "accountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('effectiveStorageAccountName')), '2023-01-01').keys[0].value]",
+          "shareName": "mirofish-uploads",
+          "accessMode": "ReadWrite"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', format('{0}-env', parameters('projectName')))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices/shares', variables('effectiveStorageAccountName'), 'default', 'mirofish-uploads')]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('effectiveStorageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-01-01",
+      "name": "[variables('effectiveStorageAccountName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": false,
+        "supportsHttpsTrafficOnly": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/fileServices",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}', variables('effectiveStorageAccountName'), 'default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('effectiveStorageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}/{2}', variables('effectiveStorageAccountName'), 'default', 'mirofish-uploads')]",
+      "properties": {
+        "shareQuota": 100,
+        "enabledProtocols": "SMB"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('effectiveStorageAccountName'), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+      "apiVersion": "2023-06-01-preview",
+      "name": "[format('{0}-pg', parameters('projectName'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('postgresSku')]",
+        "tier": "[if(contains(parameters('postgresSku'), '_B'), 'Burstable', if(or(contains(parameters('postgresSku'), '_D'), contains(parameters('postgresSku'), '_E')), 'GeneralPurpose', 'MemoryOptimized'))]"
+      },
+      "properties": {
+        "administratorLogin": "[parameters('postgresAdminUser')]",
+        "administratorLoginPassword": "[parameters('postgresAdminPassword')]",
+        "version": "16",
+        "storage": {
+          "storageSizeGB": 32
+        },
+        "backup": {
+          "backupRetentionDays": 7,
+          "geoRedundantBackup": "Disabled"
+        },
+        "highAvailability": {
+          "mode": "Disabled"
+        },
+        "network": {
+          "publicNetworkAccess": "Enabled"
+        },
+        "authConfig": {
+          "activeDirectoryAuth": "Disabled",
+          "passwordAuth": "Enabled"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+      "apiVersion": "2023-06-01-preview",
+      "name": "[format('{0}/{1}', format('{0}-pg', parameters('projectName')), 'mirofish')]",
+      "properties": {
+        "charset": "UTF8",
+        "collation": "en_US.utf8"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('{0}-pg', parameters('projectName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
+      "apiVersion": "2023-06-01-preview",
+      "name": "[format('{0}/{1}', format('{0}-pg', parameters('projectName')), 'allow-azure-services')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('{0}-pg', parameters('projectName')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "acrLoginServer": {
+      "type": "string",
+      "metadata": {
+        "description": "URL de login de ACR"
+      },
+      "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', format('{0}acr', parameters('projectName'))), '2023-01-01-preview').loginServer]"
+    },
+    "acrName": {
+      "type": "string",
+      "metadata": {
+        "description": "Nom del recurs ACR"
+      },
+      "value": "[format('{0}acr', parameters('projectName'))]"
+    },
+    "containerAppsEnvId": {
+      "type": "string",
+      "metadata": {
+        "description": "ID del Container Apps Environment"
+      },
+      "value": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-env', parameters('projectName')))]"
+    },
+    "storageAccountNameOut": {
+      "type": "string",
+      "metadata": {
+        "description": "Nom del Storage Account"
+      },
+      "value": "[variables('effectiveStorageAccountName')]"
+    },
+    "storageAccountKey": {
+      "type": "string",
+      "metadata": {
+        "description": "Clau primaria del Storage Account"
+      },
+      "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('effectiveStorageAccountName')), '2023-01-01').keys[0].value]"
+    },
+    "storageConnectionString": {
+      "type": "string",
+      "metadata": {
+        "description": "Connection string del Storage Account"
+      },
+      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net', variables('effectiveStorageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('effectiveStorageAccountName')), '2023-01-01').keys[0].value)]"
+    },
+    "fileShareName": {
+      "type": "string",
+      "metadata": {
+        "description": "Nom del File Share Azure Files"
+      },
+      "value": "mirofish-uploads"
+    },
+    "postgresHost": {
+      "type": "string",
+      "metadata": {
+        "description": "FQDN del servidor PostgreSQL"
+      },
+      "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('{0}-pg', parameters('projectName'))), '2023-06-01-preview').fullyQualifiedDomainName]"
+    },
+    "postgresAdminUserOut": {
+      "type": "string",
+      "metadata": {
+        "description": "Usuari administrador de PostgreSQL"
+      },
+      "value": "[parameters('postgresAdminUser')]"
+    },
+    "databaseUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "DATABASE_URL per a la Container App"
+      },
+      "value": "[format('postgresql+psycopg2://{0}:{1}@{2}/mirofish?sslmode=require', parameters('postgresAdminUser'), parameters('postgresAdminPassword'), reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('{0}-pg', parameters('projectName'))), '2023-06-01-preview').fullyQualifiedDomainName)]"
+    }
+  }
+}

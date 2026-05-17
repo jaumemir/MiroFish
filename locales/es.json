@@ -1,6 +1,7 @@
 {
   "common": {
     "confirm": "Confirmar",
+    "accept": "Acceptar",
     "cancel": "Cancelar",
     "save": "Guardar",
     "loading": "Cargando...",
@@ -73,7 +74,9 @@
     "startEngine": "Iniciar motor",
     "initializing": "Inicializando...",
     "importOntology": "Importar ontología",
-    "importOntologyHint": "Seleccionar archivo JSON de ontología"
+    "importOntologyHint": "Seleccionar archivo JSON de ontología",
+    "myProjects": "Mis Proyectos",
+    "newProject": "Nuevo Proyecto"
   },
   "main": {
     "layoutGraph": "Grafo",
@@ -85,7 +88,8 @@
       "Ejecutar simulación",
       "Generación de informe",
       "Interacción profunda"
-    ]
+    ],
+    "step": "Paso"
   },
   "step1": {
     "ontologyGeneration": "Generación de ontología",
@@ -95,10 +99,16 @@
     "ontologyDesc": "El LLM analiza el contenido del documento y los requisitos de simulación, extrae semillas de la realidad y genera automáticamente la estructura ontológica adecuada",
     "ontologyFallbackPersonName": "Person",
     "ontologyFallbackPersonDesc": "Cualquier persona individual que no encaja en otros tipos de persona más específicos.",
-    "ontologyFallbackPersonExamples": ["ciudadano ordinario", "internauta anónimo"],
+    "ontologyFallbackPersonExamples": [
+      "ciudadano ordinario",
+      "internauta anónimo"
+    ],
     "ontologyFallbackOrgName": "Organization",
     "ontologyFallbackOrgDesc": "Cualquier organización que no encaja en otros tipos de organización más específicos.",
-    "ontologyFallbackOrgExamples": ["pequeña empresa", "grupo comunitario"],
+    "ontologyFallbackOrgExamples": [
+      "pequeña empresa",
+      "grupo comunitario"
+    ],
     "analyzingDocs": "Analizando documentos...",
     "graphRagBuild": "Construcción de GraphRAG",
     "graphRagDesc": "A partir de la ontología generada, los documentos se fragmentan automáticamente y se envían a Zep para construir un grafo de conocimiento, extrayendo entidades y relaciones, formando memoria temporal y resúmenes de comunidad",
@@ -223,6 +233,9 @@
     "selectEntityType": "Tipo de entidad",
     "selectEntity": "Seleccionar entidad",
     "extraInstructions": "Instrucciones adicionales (opcional)",
+    "extraInstructionsLabel": "Instrucciones para el LLM",
+    "editGuidanceHint": "Los cambios de arriba y estas instrucciones guiarán al LLM para regenerar el perfil completo de forma coherente.",
+    "regeneratingAgent": "Regenerando...",
     "manuallyEditedBadge": "Editado",
     "generatingConfig": "Generando configuración de comportamiento...",
     "cloneFrom": "Clonar de simulación anterior",
@@ -247,7 +260,15 @@
     "agentField_mbti": "MBTI",
     "agentField_country": "País",
     "agentField_profession": "Profesión",
-    "agentField_stance": "Postura"
+    "agentField_stance": "Postura",
+    "stanceSupportive": "A favor",
+    "stanceOpposing": "En contra",
+    "stanceNeutral": "Neutral",
+    "stanceObserver": "Observador",
+    "stance_supportive": "A favor",
+    "stance_opposing": "En contra",
+    "stance_neutral": "Neutral",
+    "stance_observer": "Observador"
   },
   "step3": {
     "startGenerateReport": "Generar informe",
@@ -278,7 +299,14 @@
     "forceStopSuccess": "Simulación detenida forzosamente",
     "forceStopFailed": "Error en detención forzada: {error}",
     "startGenerateReportBtn": "Generar informe",
-    "generatingReportBtn": "Iniciando..."
+    "generatingReportBtn": "Iniciando...",
+    "stopSimBtn": "Detener simulación",
+    "stoppingSimBtn": "Deteniendo...",
+    "resumeSimBtn": "Reanudar simulación",
+    "resumingSim": "Reanudando simulación...",
+    "simResumed": "Simulación reanudada",
+    "resumeFailed": "Error al reanudar: {error}",
+    "resumeException": "Excepción al reanudar: {error}"
   },
   "step4": {
     "generatingSection": "Generando {title}...",
@@ -767,5 +795,76 @@
   },
   "error": {
     "filesLostAfterRefresh": "Los archivos se perdieron al refrescar la página. Redirigiendo al inicio para volver a seleccionarlos…"
+  },
+  "projectDetail": {
+    "backToHome": "Volver a mis proyectos",
+    "project": "Proyecto",
+    "simulationQuestion": "Pregunta de simulación",
+    "sourceFile": "Archivo inicial",
+    "ontology": "Ontología",
+    "noOntology": "Sin ontología",
+    "uploadNewOntology": "Subir nueva ontología",
+    "graphBase": "Grafo base",
+    "entities": "entidades",
+    "viewGraph": "Ver grafo",
+    "forceRebuild": "Forzar regeneración",
+    "retry": "Reintentar",
+    "graphBuilding": "Construyendo...",
+    "noGraph": "Sin grafo generado",
+    "confirmForceRebuild": "Eliminará el grafo actual y lo reconstruirá desde cero. ¿Continuar?",
+    "graphStatus": {
+      "ready": "Completado",
+      "building": "En curso",
+      "failed": "Error"
+    },
+    "simulations": "Simulaciones",
+    "newSimulation": "Nueva simulación",
+    "simulation": "Simulación",
+    "rounds": "rondas",
+    "adjust": "Ajustar",
+    "regenerateReport": "Regenerar informe",
+    "interaction": "Interacción",
+    "downloadMd": "↓ MD",
+    "downloadPdf": "↓ PDF",
+    "downloadLog": "↓ Log",
+    "delete": "Eliminar",
+    "confirmDelete": "¿Eliminar esta simulación? Esta acción no se puede deshacer.",
+    "noSimulations": "Sin simulaciones. Crea una nueva para empezar.",
+    "statusCreated": "Creada",
+    "statusPreparing": "Preparando",
+    "statusConfiguring": "Configurando",
+    "statusReady": "Lista",
+    "statusCompleted": "Completada",
+    "statusProfiles_ready": "Perfiles listos",
+    "statusConfig_ready": "Config lista",
+    "statusRunning": "En curso",
+    "statusPaused": "En pausa",
+    "statusStopped": "Finalizada",
+    "viewRunning": "Ver simulación",
+    "continueSimulation": "Continuar",
+    "statusError": "Error",
+    "statusFailed": "Fallida",
+    "statusPrepared": "Preparada",
+    "backToProject": "Volver al proyecto",
+    "graphMiniature": "Graph miniatura"
+  },
+  "help": {
+    "buttonTitle": "Ayuda",
+    "modalTitle": "Ayuda",
+    "close": "Cerrar",
+    "learnMore": "Para saber más",
+    "sections": {
+      "overview": "Visión general",
+      "step1": "Paso 1 — Grafo",
+      "step2": "Paso 2 — Entorno",
+      "step3": "Paso 3 — Simulación",
+      "step4": "Paso 4 — Informe",
+      "step5": "Paso 5 — Interacción"
+    }
+  },
+  "adjust": {
+    "readOnlyMode": "Modo consulta",
+    "editSection": "Editar esta sección",
+    "launchSimulation": "▶ Lanzar simulación"
   }
 }

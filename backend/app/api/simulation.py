@@ -221,14 +221,24 @@ def create_simulation():
                 "success": False,
                 "error": t('api.requireProjectId')
             }), 400
-        
+
+        from .. import get_current_user
+        from ..db import get_session
+        from ..models.db_models import ProjectModel
+        user = get_current_user()
+        if user and user.role != 'admin':
+            with get_session() as db:
+                proj = db.get(ProjectModel, project_id)
+                if proj and proj.user_id and proj.user_id != user.id:
+                    return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
         project = ProjectManager.get_project(project_id)
         if not project:
             return jsonify({
                 "success": False,
                 "error": t('api.projectNotFound', id=project_id)
             }), 404
-        
+
         graph_id = data.get('graph_id') or project.get("graph_id")
         if not graph_id:
             return jsonify({
@@ -360,11 +370,10 @@ def _check_simulation_prepared(simulation_id: str) -> tuple:
             # If status is "preparing" but files are done, auto-update status to "ready"
             if status == "preparing":
                 try:
-                    state_data["status"] = "ready"
-                    from datetime import datetime
-                    state_data["updated_at"] = datetime.now().isoformat()
-                    with open(state_file, 'w', encoding='utf-8') as f:
-                        json.dump(state_data, f, ensure_ascii=False, indent=2)
+                    state = SimulationManager().get_simulation(simulation_id)
+                    if state:
+                        state.status = SimulationStatus.READY
+                        SimulationManager()._save_simulation_state(state)
                     logger.info(f"Auto-updated simulation status: {simulation_id} preparing -> ready")
                     status = "ready"
                 except Exception as e:
@@ -457,7 +466,17 @@ def prepare_simulation():
                 "success": False,
                 "error": t('api.simulationNotFound', id=simulation_id)
             }), 404
-        
+
+        from .. import get_current_user
+        from ..db import get_session
+        from ..models.db_models import ProjectModel
+        user = get_current_user()
+        if user and user.role != 'admin':
+            with get_session() as db:
+                proj = db.get(ProjectModel, state.project_id)
+                if proj and proj.user_id and proj.user_id != user.id:
+                    return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
         # Check whether force regeneration is requested
         force_regenerate = data.get('force_regenerate', False)
         logger.info(f"Processing /prepare request: simulation_id={simulation_id}, force_regenerate={force_regenerate}")
@@ -819,19 +838,33 @@ def get_simulation(simulation_id: str):
     try:
         manager = SimulationManager()
         state = manager.get_simulation(simulation_id)
-        
+
         if not state:
             return jsonify({
                 "success": False,
                 "error": t('api.simulationNotFound', id=simulation_id)
             }), 404
-        
+
+        # Reconcile: if manager thinks it's running but the runner has already finished, sync the status
+        if state.status == SimulationStatus.RUNNING:
+            run_state = SimulationRunner.get_run_state(simulation_id)
+            if run_state:
+                if run_state.runner_status == RunnerStatus.COMPLETED:
+                    state.status = SimulationStatus.COMPLETED
+                    manager._save_simulation_state(state)
+                elif run_state.runner_status in [RunnerStatus.STOPPED, RunnerStatus.STOPPING]:
+                    state.status = SimulationStatus.PAUSED
+                    manager._save_simulation_state(state)
+                elif run_state.runner_status == RunnerStatus.FAILED:
+                    state.status = SimulationStatus.FAILED
+                    manager._save_simulation_state(state)
+
         result = state.to_dict()
-        
+
         # If simulation is ready, attach run instructions
         if state.status == SimulationStatus.READY:
             result["run_instructions"] = manager.get_run_instructions(simulation_id)
-        
+
         return jsonify({
             "success": True,
             "data": result
@@ -839,6 +872,115 @@ def get_simulation(simulation_id: str):
         
     except Exception as e:
         logger.error(f"Failed to get simulation status: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
+@simulation_bp.route('/<simulation_id>/detail', methods=['GET'])
+def get_simulation_detail(simulation_id: str):
+    """Get simulation detail: state, profiles and config"""
+    try:
+        manager = SimulationManager()
+        state = manager.get_simulation(simulation_id)
+
+        if not state:
+            return jsonify({
+                "success": False,
+                "error": t('api.simulationNotFound', id=simulation_id)
+            }), 404
+
+        # Load profiles (use platform from state: twitter takes priority)
+        platform = "twitter" if state.enable_twitter else "reddit"
+        try:
+            profiles = manager.get_profiles(simulation_id, platform=platform)
+        except Exception:
+            profiles = []
+
+        # Load simulation config from file
+        config = manager.get_simulation_config(simulation_id) or {}
+
+        # Fetch rounds_total and rounds_completed from DB
+        rounds_total = None
+        rounds_completed = 0
+        try:
+            from ..db import get_session
+            from ..models.db_models import SimulationModel
+            with get_session() as db:
+                sim_record = db.get(SimulationModel, simulation_id)
+                if sim_record:
+                    rounds_total = sim_record.rounds_total
+                    rounds_completed = sim_record.rounds_completed
+        except Exception:
+            pass
+
+        return jsonify({
+            "simulation": {
+                "id": state.simulation_id,
+                "project_id": state.project_id,
+                "graph_id": state.graph_id,
+                "status": state.status.value if hasattr(state.status, 'value') else state.status,
+                "platform": platform,
+                "enable_twitter": state.enable_twitter,
+                "enable_reddit": state.enable_reddit,
+                "entities_count": state.entities_count,
+                "profiles_count": state.profiles_count,
+                "current_round": state.current_round,
+                "twitter_status": state.twitter_status,
+                "reddit_status": state.reddit_status,
+                "created_at": state.created_at,
+                "updated_at": state.updated_at,
+                "graph_id_simulation": state.graph_id_simulation,
+                "parent_simulation_id": state.parent_simulation_id,
+                "rounds_total": rounds_total,
+                "rounds_completed": rounds_completed,
+            },
+            "profiles": profiles,
+            "config": config,
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Failed to get simulation detail: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
+@simulation_bp.route('/<simulation_id>', methods=['DELETE'])
+def delete_simulation(simulation_id: str):
+    """Delete a simulation from the DB and its data directory."""
+    try:
+        import shutil
+        from ..models.db_models import SimulationModel
+        from ..db import get_session
+
+        # Check existence in DB (source of truth since fase3)
+        with get_session() as db:
+            sim_model = db.get(SimulationModel, simulation_id)
+            if not sim_model:
+                # Fall back to filesystem check for legacy simulations
+                manager = SimulationManager()
+                if not manager.get_simulation(simulation_id):
+                    return jsonify({"success": False, "error": t('api.simulationNotFound', id=simulation_id)}), 404
+            else:
+                db.delete(sim_model)
+                db.commit()
+
+        # Remove filesystem data regardless of DB presence
+        manager = SimulationManager()
+        manager._simulations.pop(simulation_id, None)
+        sim_dir = manager._get_simulation_dir(simulation_id)
+        if os.path.isdir(sim_dir):
+            shutil.rmtree(sim_dir, ignore_errors=True)
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        logger.error(f"Failed to delete simulation: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -1596,6 +1738,16 @@ def start_simulation():
                 "success": False,
                 "error": t('api.simulationNotFound', id=simulation_id)
             }), 404
+
+        from .. import get_current_user
+        from ..db import get_session
+        from ..models.db_models import ProjectModel
+        user = get_current_user()
+        if user and user.role != 'admin':
+            with get_session() as db:
+                proj = db.get(ProjectModel, state.project_id)
+                if proj and proj.user_id and proj.user_id != user.id:
+                    return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
         force_restarted = False
 
@@ -2900,25 +3052,47 @@ def generate_config_endpoint(simulation_id: str):
                     profiles = _json.load(f)
 
                 from ..services.zep_entity_reader import ZepEntityReader, EntityNode
+
+                # Build a lookup of profile fields (including manually edited ones)
+                # keyed by source_entity_uuid so they can override graph data.
+                profile_overrides = {}
+                for p in profiles:
+                    uuid_ = p.get("source_entity_uuid")
+                    if uuid_:
+                        profile_overrides[uuid_] = {
+                            "stance": p.get("stance"),
+                            "age": p.get("age"),
+                            "gender": p.get("gender"),
+                            "country": p.get("country"),
+                            "profession": p.get("profession"),
+                            "mbti": p.get("mbti"),
+                        }
+
                 entity_nodes = []
                 reader = ZepEntityReader()
                 for p in profiles:
                     uuid_ = p.get("source_entity_uuid")
+                    entity = None
                     if uuid_:
                         try:
                             entity = reader.get_entity_with_context(state.graph_id, uuid_)
                             if entity:
-                                entity_nodes.append(entity)
-                        except Exception:
-                            pass
+                                # Apply profile overrides so manually edited fields win
+                                overrides = profile_overrides.get(uuid_, {})
+                                for k, v in overrides.items():
+                                    if v is not None:
+                                        entity.attributes[k] = v
+                        except Exception as e:
+                            logger.warning(f"Zep lookup failed for uuid={uuid_}: {e}")
 
-                # If Zep lookup yielded nothing, synthesize minimal EntityNodes from profiles
-                # so the config generator can still produce per-agent configs.
-                if not entity_nodes:
-                    for p in profiles:
+                    # Per-agent fallback: if Zep lookup failed or returned nothing,
+                    # synthesize a minimal EntityNode directly from the profile so that
+                    # every agent is represented in the config generation pass.
+                    if not entity:
                         user_id = p.get("user_id", 0)
-                        entity_nodes.append(EntityNode(
-                            uuid=p.get("source_entity_uuid") or f"profile_{user_id}",
+                        fallback_uuid = uuid_ or f"profile_{user_id}"
+                        entity = EntityNode(
+                            uuid=fallback_uuid,
                             name=p.get("name") or p.get("username") or f"agent_{user_id}",
                             labels=[p.get("profession") or "Person"],
                             summary=p.get("bio") or "",
@@ -2930,7 +3104,10 @@ def generate_config_endpoint(simulation_id: str):
                                 "mbti": p.get("mbti"),
                                 "stance": p.get("stance"),
                             },
-                        ))
+                        )
+                        logger.info(f"Using profile fallback for agent user_id={user_id} ({entity.name})")
+
+                    entity_nodes.append(entity)
 
                 gen = SimulationConfigGenerator()
                 params = gen.generate_config(
@@ -3163,7 +3340,13 @@ def regenerate_agent(simulation_id: str, user_id: int):
         if not state:
             return jsonify({"success": False, "error": t('api.simulationNotFound', id=simulation_id)}), 404
 
-        if state.status != SimulationStatus.PROFILES_READY:
+        ALLOWED_REGEN_STATUSES = {
+            SimulationStatus.PROFILES_READY,
+            SimulationStatus.READY,
+            SimulationStatus.PAUSED,
+            SimulationStatus.COMPLETED,
+        }
+        if state.status not in ALLOWED_REGEN_STATUSES:
             return jsonify({
                 "success": False,
                 "error": t('api.requireProfilesReady', status=state.status.value)

@@ -1,5 +1,12 @@
 <template>
   <div class="simulation-panel">
+    <!-- Adjust mode banner -->
+    <div v-if="props.adjustMode && !editingSection" class="adjust-banner">
+      📋 {{ $t('adjust.readOnlyMode') }} —
+      <button class="adjust-edit-btn" @click="editingSection = true">
+        ✏️ {{ $t('adjust.editSection') }}
+      </button>
+    </div>
     <!-- Top Control Bar -->
     <div class="control-bar">
       <div class="status-group">
@@ -91,6 +98,7 @@
       </div>
 
       <div class="action-controls">
+        <fieldset :disabled="props.adjustMode && !editingSection" style="border:none;padding:0;margin:0;">
         <div class="option-row">
           <label class="toggle-label">
             <input type="checkbox" v-model="enableGraphMemoryUpdate" :disabled="phase >= 1" />
@@ -98,9 +106,31 @@
             <span class="hint">Update agent conversations to graph in real time (needed for report analysis)</span>
           </label>
         </div>
+        </fieldset>
+        <!-- Botó atura (quan s'executa) -->
+        <button
+          v-if="phase === 1"
+          class="action-btn stop"
+          :disabled="isStopping"
+          @click="handleStopSimulation"
+        >
+          <span v-if="isStopping" class="loading-spinner-small"></span>
+          {{ isStopping ? $t('step3.stoppingSimBtn') : $t('step3.stopSimBtn') }}
+        </button>
+        <!-- Botó reprèn (quan pausada) -->
+        <button
+          v-if="phase === 0 && canResume"
+          class="action-btn resume"
+          :disabled="isResuming"
+          @click="handleResumeSimulation"
+        >
+          <span v-if="isResuming" class="loading-spinner-small"></span>
+          {{ isResuming ? $t('step3.resumingSim') : $t('step3.resumeSimBtn') }}
+        </button>
+        <!-- Botó genera informe (quan completada o pausada) -->
         <button
           class="action-btn primary"
-          :disabled="phase !== 2 || isGeneratingReport"
+          :disabled="(phase !== 2 && !canResume) || isGeneratingReport"
           @click="handleNextStep"
         >
           <span v-if="isGeneratingReport" class="loading-spinner-small"></span>
@@ -296,6 +326,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useBackTo } from '@/composables/useBackTo.js'
 import {
   startSimulation,
   stopSimulation,
@@ -305,6 +336,7 @@ import {
 import { generateReport } from '../api/report'
 
 const { t } = useI18n()
+const { pushWithBackTo } = useBackTo('Home')
 
 const props = defineProps({
   simulationId: String,
@@ -315,24 +347,71 @@ const props = defineProps({
   },
   projectData: Object,
   graphData: Object,
-  systemLogs: Array
+  systemLogs: Array,
+  adjustMode: { type: Boolean, default: false },
+  adjustConfig: { type: Object, default: null },
+  agents: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['go-back', 'next-step', 'add-log', 'update-status'])
+const emit = defineEmits(['go-back', 'next-step', 'add-log', 'update-status', 'update-graph-id'])
 
 const router = useRouter()
 
 // State
 const isGeneratingReport = ref(false)
-const phase = ref(0) // 0: 未开始, 1: 运行中, 2: 已完成
+const phase = ref(0) // 0: 未开始/pausada, 1: 运行中, 2: 已完成
 const enableGraphMemoryUpdate = ref(true)
 const isStarting = ref(false)
 const isStopping = ref(false)
+const isResuming = ref(false)
+const canResume = ref(false) // true quan la simulació estava pausada i té dades
 const startError = ref(null)
 const runStatus = ref({})
 const allActions = ref([]) // 所有动作（增量累积）
 const actionIds = ref(new Set()) // 用于去重的动作ID集合
 const scrollContainer = ref(null)
+
+// Adjust mode
+const editingSection = ref(false)
+
+watch(() => props.adjustConfig, (config) => {
+  if (config && props.adjustMode) {
+    // Pre-fill runStatus with config data if available
+    if (config.max_rounds != null) {
+      runStatus.value = { ...runStatus.value, total_rounds: config.max_rounds }
+    } else if (config.time_config?.total_simulation_hours && config.time_config?.minutes_per_round) {
+      // Derive max_rounds from time config if max_rounds is not set directly
+      const derived = Math.floor((config.time_config.total_simulation_hours * 60) / config.time_config.minutes_per_round)
+      if (derived > 0) {
+        runStatus.value = { ...runStatus.value, total_rounds: derived }
+      }
+    }
+    // Pre-fill graph memory update toggle if stored in config
+    if (config.enable_graph_memory_update != null) {
+      enableGraphMemoryUpdate.value = config.enable_graph_memory_update
+    }
+  }
+}, { immediate: true })
+
+// Local copy of agent_configs to avoid mutating the prop directly
+const localAgentConfigs = ref(null)
+
+watch(() => props.adjustConfig, (config) => {
+  if (config?.agent_configs) {
+    localAgentConfigs.value = [...config.agent_configs]
+  }
+}, { immediate: true })
+
+// Adjust mode: keep localAgentConfigs in sync when agents change in Step2
+watch(() => props.agents, (newAgents) => {
+  if (!props.adjustMode || !localAgentConfigs.value) return
+  const agentIds = new Set(newAgents.map(a => a.user_id ?? a.id))
+  const removed = localAgentConfigs.value.filter(ac => !agentIds.has(ac.agent_id ?? ac.user_id))
+  if (removed.length > 0) {
+    console.warn('[adjust-mode] Removing orphaned agent_configs:', removed.map(a => a.agent_id))
+  }
+  localAgentConfigs.value = localAgentConfigs.value.filter(ac => agentIds.has(ac.agent_id ?? ac.user_id))
+}, { deep: true })
 
 // Computed
 // 按时间顺序显示动作（最新的在最后面，即底部）
@@ -384,6 +463,8 @@ const resetAllState = () => {
   startError.value = null
   isStarting.value = false
   isStopping.value = false
+  isResuming.value = false
+  canResume.value = false
   stopPolling()  // 停止之前可能存在的轮询
 }
 
@@ -425,10 +506,14 @@ const doStartSimulation = async () => {
       }
       addLog(t('log.engineStarted'))
       addLog(`  ├─ PID: ${res.data.process_pid || '-'}`)
-      
+
+      if (res.data.graph_id_simulation) {
+        emit('update-graph-id', res.data.graph_id_simulation)
+      }
+
       phase.value = 1
       runStatus.value = res.data
-      
+
       startStatusPolling()
       startDetailPolling()
     } else {
@@ -457,8 +542,9 @@ const handleStopSimulation = async () => {
     
     if (res.success) {
       addLog(t('log.simStoppedSuccess'))
-      phase.value = 2
       stopPolling()
+      phase.value = 0
+      canResume.value = true
       emit('update-status', 'completed')
     } else {
       addLog(t('log.stopFailed', { error: res.error || t('common.unknownError') }))
@@ -467,6 +553,50 @@ const handleStopSimulation = async () => {
     addLog(t('log.stopException', { error: err.message }))
   } finally {
     isStopping.value = false
+  }
+}
+
+// Reprendre la simulació pausada
+const handleResumeSimulation = async () => {
+  if (!props.simulationId) return
+
+  isResuming.value = true
+  addLog(t('step3.resumingSim'))
+  emit('update-status', 'processing')
+
+  try {
+    const params = {
+      simulation_id: props.simulationId,
+      platform: 'parallel',
+      force: false,  // no esborrar logs existents
+      enable_graph_memory_update: enableGraphMemoryUpdate.value
+    }
+
+    if (props.maxRounds) {
+      params.max_rounds = props.maxRounds
+    }
+
+    const res = await startSimulation(params)
+
+    if (res.success && res.data) {
+      addLog(t('step3.simResumed'))
+      if (res.data.graph_id_simulation) {
+        emit('update-graph-id', res.data.graph_id_simulation)
+      }
+      canResume.value = false
+      phase.value = 1
+      runStatus.value = res.data
+      startStatusPolling()
+      startDetailPolling()
+    } else {
+      addLog(t('step3.resumeFailed', { error: res.error || t('common.unknownError') }))
+      emit('update-status', 'error')
+    }
+  } catch (err) {
+    addLog(t('step3.resumeException', { error: err.message }))
+    emit('update-status', 'error')
+  } finally {
+    isResuming.value = false
   }
 }
 
@@ -520,14 +650,18 @@ const fetchRunStatus = async () => {
       }
       
       // 检测模拟是否已完成（通过 runner_status 或平台完成状态判断）
-      const isCompleted = data.runner_status === 'completed' || data.runner_status === 'stopped'
-      
+      const isCompleted = data.runner_status === 'completed'
+        || data.runner_status === 'stopped'
+        || data.runner_status === 'failed'
+
       // 额外检查：如果后端还没来得及更新 runner_status，但平台已经报告完成
       // 通过检测 twitter_completed 和 reddit_completed 状态判断
       const platformsCompleted = checkPlatformsCompleted(data)
-      
+
       if (isCompleted || platformsCompleted) {
-        if (platformsCompleted && !isCompleted) {
+        if (data.runner_status === 'failed') {
+          addLog(t('log.simEndedWithError'))
+        } else if (platformsCompleted && !isCompleted) {
           addLog(t('log.allPlatformsCompleted'))
         }
         addLog(t('log.simCompleted'))
@@ -674,7 +808,7 @@ const handleNextStep = async () => {
       addLog(t('log.reportGenTaskStarted', { reportId }))
       
       // 跳转到报告页面
-      router.push({ name: 'Report', params: { reportId } })
+      pushWithBackTo({ name: 'Report', params: { reportId } })
     } else {
       addLog(t('log.reportGenFailed', { error: res.error || t('common.unknownError') }))
       isGeneratingReport.value = false
@@ -719,17 +853,26 @@ onMounted(async () => {
         await doReconnectSimulation()
         return
       }
-      if (status === 'completed' || status === 'stopped') {
-        addLog(t('log.simAlreadyCompleted'))
+      if (status === 'completed' || status === 'failed') {
         runStatus.value = res.data
         phase.value = 2
         emit('update-status', 'completed')
         await fetchRunStatusDetail()
+        if (status === 'failed') {
+          addLog(t('log.simEndedWithError'))
+        } else {
+          addLog(t('log.simAlreadyCompleted'))
+        }
         return
       }
-      if (status === 'failed') {
-        startError.value = res.data.error || t('common.unknownError')
-        emit('update-status', 'error')
+      if (status === 'stopped') {
+        // Simulació pausada: carregar dades existents i oferir reprendre
+        runStatus.value = res.data
+        await fetchRunStatusDetail()
+        canResume.value = true
+        phase.value = 0
+        emit('update-status', 'completed')
+        addLog(t('step3.resumeSimBtn'))
         return
       }
     }
@@ -753,6 +896,34 @@ onUnmounted(() => {
   background: #FFFFFF;
   font-family: 'Space Grotesk', 'Noto Sans SC', system-ui, sans-serif;
   overflow: hidden;
+}
+
+.adjust-banner {
+  background: #1e2e1e;
+  border: 1px solid #3a6a3a;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.5rem 0.75rem 0;
+  font-size: 0.82rem;
+  color: #80c0ff;
+}
+
+.adjust-edit-btn {
+  background: transparent;
+  border: none;
+  color: #ffd080;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+fieldset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+fieldset:disabled * {
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* --- Control Bar --- */
@@ -940,6 +1111,28 @@ onUnmounted(() => {
 
 .action-btn.primary:hover:not(:disabled) {
   background: #333;
+}
+
+.action-btn.stop {
+  background: #fff;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.action-btn.stop:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.action-btn.resume {
+  background: #fff;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.action-btn.resume:hover:not(:disabled) {
+  background: #f0fdf4;
+  border-color: #16a34a;
 }
 
 .action-btn:disabled {

@@ -67,6 +67,7 @@ class OasisAgentProfile:
     country: Optional[str] = None
     profession: Optional[str] = None
     interested_topics: List[str] = field(default_factory=list)
+    stance: Optional[str] = None  # supportive / opposing / neutral / observer
 
     # Source entity information
     source_entity_uuid: Optional[str] = None
@@ -99,6 +100,8 @@ class OasisAgentProfile:
             profile["profession"] = self.profession
         if self.interested_topics:
             profile["interested_topics"] = self.interested_topics
+        if self.stance:
+            profile["stance"] = self.stance
         if self.source_entity_uuid:
             profile["source_entity_uuid"] = self.source_entity_uuid
         if self.source_entity_type:
@@ -133,9 +136,11 @@ class OasisAgentProfile:
             profile["profession"] = self.profession
         if self.interested_topics:
             profile["interested_topics"] = self.interested_topics
-        
+        if self.stance:
+            profile["stance"] = self.stance
+
         return profile
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to full dictionary format"""
         return {
@@ -154,6 +159,7 @@ class OasisAgentProfile:
             "country": self.country,
             "profession": self.profession,
             "interested_topics": self.interested_topics,
+            "stance": self.stance,
             "source_entity_uuid": self.source_entity_uuid,
             "source_entity_type": self.source_entity_type,
             "created_at": self.created_at,
@@ -290,7 +296,8 @@ class OasisProfileGenerator:
                 entity_type=entity_type,
                 entity_summary=entity.summary,
                 entity_attributes=entity.attributes,
-                context=context
+                context=context,
+                extra_instructions=extra_instructions,
             )
         else:
             # Use rule-based generation for a basic persona
@@ -317,6 +324,7 @@ class OasisProfileGenerator:
             country=profile_data.get("country"),
             profession=profile_data.get("profession"),
             interested_topics=_normalize_topics(profile_data.get("interested_topics", [])),
+            stance=profile_data.get("stance"),
             source_entity_uuid=entity.uuid,
             source_entity_type=entity_type,
         )
@@ -577,7 +585,8 @@ class OasisProfileGenerator:
         entity_type: str,
         entity_summary: str,
         entity_attributes: Dict[str, Any],
-        context: str
+        context: str,
+        extra_instructions: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Use an LLM to generate a very detailed persona.
@@ -586,16 +595,18 @@ class OasisProfileGenerator:
         - Individual entities: generate a concrete character profile
         - Group/institution entities: generate a representative account profile
         """
-        
+
         is_individual = self._is_individual_entity(entity_type)
-        
+
         if is_individual:
             prompt = self._build_individual_persona_prompt(
-                entity_name, entity_type, entity_summary, entity_attributes, context
+                entity_name, entity_type, entity_summary, entity_attributes, context,
+                extra_instructions=extra_instructions,
             )
         else:
             prompt = self._build_group_persona_prompt(
-                entity_name, entity_type, entity_summary, entity_attributes, context
+                entity_name, entity_type, entity_summary, entity_attributes, context,
+                extra_instructions=extra_instructions,
             )
 
         # Attempt multiple times until successful or max retries reached
@@ -757,12 +768,14 @@ class OasisProfileGenerator:
         entity_type: str,
         entity_summary: str,
         entity_attributes: Dict[str, Any],
-        context: str
+        context: str,
+        extra_instructions: Optional[str] = None,
     ) -> str:
         """Build a detailed persona prompt for an individual entity"""
 
         attrs_str = json.dumps(entity_attributes, ensure_ascii=False) if entity_attributes else "none"
         context_str = context[:3000] if context else "no additional context"
+        extra_block = f"\n\nUser guidance (MUST be respected — adjust all other fields to be coherent with these):\n{extra_instructions}" if extra_instructions else ""
 
         return f"""Generate a detailed social media user persona for the entity below, reproducing existing real-world situations as faithfully as possible.
 
@@ -772,7 +785,7 @@ Entity summary: {entity_summary}
 Entity attributes: {attrs_str}
 
 Context information:
-{context_str}
+{context_str}{extra_block}
 
 Generate JSON with the following fields:
 
@@ -791,6 +804,7 @@ Generate JSON with the following fields:
 6. country: country name (e.g. "China")
 7. profession: occupation
 8. interested_topics: array of topics of interest
+9. stance: this entity's attitude toward the main topic of the simulation — must be one of the English strings: "supportive", "opposing", "neutral", "observer"
 
 Important:
 - All field values must be strings or numbers; do not use newline characters
@@ -798,6 +812,7 @@ Important:
 - {get_language_instruction()} (the gender field must use English: male/female)
 - Content must be consistent with the entity information
 - age must be a valid integer; gender must be "male" or "female"
+- stance must be one of: supportive, opposing, neutral, observer
 """
 
     def _build_group_persona_prompt(
@@ -806,12 +821,14 @@ Important:
         entity_type: str,
         entity_summary: str,
         entity_attributes: Dict[str, Any],
-        context: str
+        context: str,
+        extra_instructions: Optional[str] = None,
     ) -> str:
         """Build a detailed persona prompt for a group/institution entity"""
 
         attrs_str = json.dumps(entity_attributes, ensure_ascii=False) if entity_attributes else "none"
         context_str = context[:3000] if context else "no additional context"
+        extra_block = f"\n\nUser guidance (MUST be respected — adjust all other fields to be coherent with these):\n{extra_instructions}" if extra_instructions else ""
 
         return f"""Generate detailed social media account settings for an institution/group entity, reproducing existing real-world situations as faithfully as possible.
 
@@ -821,7 +838,7 @@ Entity summary: {entity_summary}
 Entity attributes: {attrs_str}
 
 Context information:
-{context_str}
+{context_str}{extra_block}
 
 Generate JSON with the following fields:
 
@@ -840,12 +857,14 @@ Generate JSON with the following fields:
 6. country: country name (e.g. "China")
 7. profession: description of the institution's function
 8. interested_topics: array of focus areas
+9. stance: this institution's official attitude toward the main topic of the simulation — must be one of the English strings: "supportive", "opposing", "neutral", "observer"
 
 Important:
 - All field values must be strings or numbers; null values are not allowed
 - persona must be a single continuous block of text; do not use newline characters
 - {get_language_instruction()} (gender field must use the English string "other")
 - age must be the integer 30; gender must be the string "other"
+- stance must be one of: supportive, opposing, neutral, observer
 - Institutional account speech must be consistent with its identity and positioning"""
     
     def _generate_profile_rule_based(

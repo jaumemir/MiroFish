@@ -1,5 +1,6 @@
 """Adapter de storage per a Azure Blob Storage."""
 import io
+from azure.storage.blob import BlobServiceClient, ContentSettings
 from .protocol import StorageService
 
 
@@ -7,7 +8,6 @@ class AzureBlobStorage:
     """Implementació de StorageService per a Azure Blob Storage."""
 
     def __init__(self, connection_string: str, container_name: str) -> None:
-        from azure.storage.blob import BlobServiceClient
         self._client = BlobServiceClient.from_connection_string(connection_string)
         self._container = container_name
         self._ensure_container()
@@ -22,10 +22,8 @@ class AzureBlobStorage:
 
     def upload(self, path: str, data: bytes | io.IOBase, content_type: str = "application/octet-stream") -> None:
         blob = self._blob_client(path)
-        if isinstance(data, bytes):
-            blob.upload_blob(data, overwrite=True, content_settings={"content_type": content_type})
-        else:
-            blob.upload_blob(data, overwrite=True, content_settings={"content_type": content_type})
+        settings = ContentSettings(content_type=content_type)
+        blob.upload_blob(data, overwrite=True, content_settings=settings)
 
     def download(self, path: str) -> bytes:
         return self._blob_client(path).download_blob().readall()

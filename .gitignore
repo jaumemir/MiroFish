@@ -58,6 +58,7 @@ backend/uploads/
 
 # Docker 数据
 data/
+!frontend/src/data/
 
 # SQLite local dev database
 *.db

@@ -168,6 +168,8 @@ try:
         generate_twitter_agent_graph,
         generate_reddit_agent_graph
     )
+    from oasis.social_platform.platform import Platform as OasisPlatform
+    from oasis.social_platform.channel import Channel as OasisChannel
 except ImportError as e:
     print(f"Error: missing dependency {e}")
     print("Please install: pip install oasis-ai camel-ai")
@@ -1018,6 +1020,8 @@ def _extract_azure_deployment(raw_url: str):
     # Strip /chat/completions and /embeddings from the path so camel-ai can append them
     clean_path = re.sub(r'/chat/completions.*$', '', parsed.path)
     clean_path = re.sub(r'/embeddings.*$', '', clean_path).rstrip('/')
+    # Strip /openai/deployments/... so camel-ai doesn't duplicate it in the final URL
+    clean_path = re.sub(r'/openai/deployments.*$', '', clean_path).rstrip('/')
     clean_url = urlunparse(parsed._replace(path=clean_path, query=''))
 
     return clean_url, model, api_version
@@ -1211,10 +1215,29 @@ async def run_twitter_simulation(
     db_path = os.path.join(simulation_dir, "twitter_simulation.db")
     if os.path.exists(db_path):
         os.remove(db_path)
-    
+
+    # Use Azure OpenAI Embeddings for recsys instead of the local twhin-bert-base model
+    # (~1.1 GB RAM) to avoid OOM kills on Azure Container Apps.
+    # camel.OpenAIEmbedding reads OPENAI_API_KEY and OPENAI_API_BASE_URL, so we map
+    # the LLM_EMBED_* variables (already in .env) to those names here.
+    embed_api_key = os.environ.get("LLM_EMBED_API_KEY") or os.environ.get("LLM_API_KEY", "")
+    embed_base_url = os.environ.get("LLM_EMBED_BASE_URL") or os.environ.get("LLM_BASE_URL", "")
+    os.environ["OPENAI_API_KEY"] = embed_api_key
+    os.environ["OPENAI_API_BASE_URL"] = embed_base_url
+
+    _twitter_channel = OasisChannel()
+    _twitter_platform = OasisPlatform(
+        db_path=db_path,
+        channel=_twitter_channel,
+        recsys_type="twhin-bert",  # internal name; use_openai_embedding=True bypasses local model
+        use_openai_embedding=True,
+        refresh_rec_post_count=2,
+        max_rec_post_len=2,
+        following_post_count=3,
+    )
     result.env = oasis.make(
         agent_graph=result.agent_graph,
-        platform=oasis.DefaultPlatformType.TWITTER,
+        platform=_twitter_platform,
         database_path=db_path,
         semaphore=30,  # 限制最大并发 LLM 请求数，防止 API 过载
     )
@@ -1284,40 +1307,41 @@ async def run_twitter_simulation(
             log_info(f"Rounds truncated: {original_rounds} -> {total_rounds} (max_rounds={max_rounds})")
     
     start_time = datetime.now()
-    
+    completed_naturally = False
+
     for round_num in range(total_rounds):
         # 检查是否收到退出信号
         if _shutdown_event and _shutdown_event.is_set():
             if main_logger:
                 main_logger.info(f"Shutdown signal received, stopping at round {round_num + 1}")
             break
-        
+
         simulated_minutes = round_num * minutes_per_round
         simulated_hour = (simulated_minutes // 60) % 24
         simulated_day = simulated_minutes // (60 * 24) + 1
-        
+
         active_agents = get_active_agents_for_round(
             result.env, config, simulated_hour, round_num
         )
-        
+
         # 无论是否有活跃agent，都记录round开始
         if action_logger:
             action_logger.log_round_start(round_num + 1, simulated_hour)
-        
+
         if not active_agents:
             # 没有活跃agent时也记录round结束（actions_count=0）
             if action_logger:
                 action_logger.log_round_end(round_num + 1, 0)
             continue
-        
+
         actions = {agent: LLMAction() for _, agent in active_agents}
         await result.env.step(actions)
-        
+
         # 从数据库获取实际执行的动作并记录
         actual_actions, last_rowid = fetch_new_actions_from_db(
             db_path, last_rowid, agent_names
         )
-        
+
         round_action_count = 0
         for action_data in actual_actions:
             if action_logger:
@@ -1330,23 +1354,30 @@ async def run_twitter_simulation(
                 )
                 total_actions += 1
                 round_action_count += 1
-        
+
         if action_logger:
             action_logger.log_round_end(round_num + 1, round_action_count)
-        
+
         if (round_num + 1) % 20 == 0:
             progress = (round_num + 1) / total_rounds * 100
             log_info(f"Day {simulated_day}, {simulated_hour:02d}:00 - Round {round_num + 1}/{total_rounds} ({progress:.1f}%)")
-    
+
+        if round_num + 1 == total_rounds:
+            completed_naturally = True
+
     # 注意：不关闭环境，保留给Interview使用
-    
+
+    # Only write simulation_end when all rounds finished — not when interrupted by signal
     if action_logger:
-        action_logger.log_simulation_end(total_rounds, total_actions)
-    
+        if completed_naturally:
+            action_logger.log_simulation_end(total_rounds, total_actions)
+        else:
+            action_logger.log_simulation_stopped(round_num + 1 if total_rounds > 0 else 0, total_actions)
+
     result.total_actions = total_actions
     elapsed = (datetime.now() - start_time).total_seconds()
-    log_info(f"Simulation loop done! Elapsed: {elapsed:.1f}s, total actions: {total_actions}")
-    
+    log_info(f"Simulation loop done! Elapsed: {elapsed:.1f}s, total actions: {total_actions}, completed={completed_naturally}")
+
     return result
 
 
@@ -1483,40 +1514,41 @@ async def run_reddit_simulation(
             log_info(f"Rounds truncated: {original_rounds} -> {total_rounds} (max_rounds={max_rounds})")
     
     start_time = datetime.now()
-    
+    completed_naturally = False
+
     for round_num in range(total_rounds):
         # 检查是否收到退出信号
         if _shutdown_event and _shutdown_event.is_set():
             if main_logger:
                 main_logger.info(f"Shutdown signal received, stopping at round {round_num + 1}")
             break
-        
+
         simulated_minutes = round_num * minutes_per_round
         simulated_hour = (simulated_minutes // 60) % 24
         simulated_day = simulated_minutes // (60 * 24) + 1
-        
+
         active_agents = get_active_agents_for_round(
             result.env, config, simulated_hour, round_num
         )
-        
+
         # 无论是否有活跃agent，都记录round开始
         if action_logger:
             action_logger.log_round_start(round_num + 1, simulated_hour)
-        
+
         if not active_agents:
             # 没有活跃agent时也记录round结束（actions_count=0）
             if action_logger:
                 action_logger.log_round_end(round_num + 1, 0)
             continue
-        
+
         actions = {agent: LLMAction() for _, agent in active_agents}
         await result.env.step(actions)
-        
+
         # 从数据库获取实际执行的动作并记录
         actual_actions, last_rowid = fetch_new_actions_from_db(
             db_path, last_rowid, agent_names
         )
-        
+
         round_action_count = 0
         for action_data in actual_actions:
             if action_logger:
@@ -1529,19 +1561,26 @@ async def run_reddit_simulation(
                 )
                 total_actions += 1
                 round_action_count += 1
-        
+
         if action_logger:
             action_logger.log_round_end(round_num + 1, round_action_count)
-        
+
         if (round_num + 1) % 20 == 0:
             progress = (round_num + 1) / total_rounds * 100
             log_info(f"Day {simulated_day}, {simulated_hour:02d}:00 - Round {round_num + 1}/{total_rounds} ({progress:.1f}%)")
-    
+
+        if round_num + 1 == total_rounds:
+            completed_naturally = True
+
     # 注意：不关闭环境，保留给Interview使用
-    
+
+    # Only write simulation_end when all rounds finished — not when interrupted by signal
     if action_logger:
-        action_logger.log_simulation_end(total_rounds, total_actions)
-    
+        if completed_naturally:
+            action_logger.log_simulation_end(total_rounds, total_actions)
+        else:
+            action_logger.log_simulation_stopped(round_num + 1 if total_rounds > 0 else 0, total_actions)
+
     result.total_actions = total_actions
     elapsed = (datetime.now() - start_time).total_seconds()
     log_info(f"Simulation loop done! Elapsed: {elapsed:.1f}s, total actions: {total_actions}")

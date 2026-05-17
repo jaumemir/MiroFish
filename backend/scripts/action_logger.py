@@ -103,7 +103,7 @@ class PlatformActionLogger:
             f.write(json.dumps(entry, ensure_ascii=False) + '\n')
     
     def log_simulation_end(self, total_rounds: int, total_actions: int):
-        """记录模拟结束"""
+        """记录模拟正常结束（所有轮次完成）"""
         entry = {
             "timestamp": datetime.now().isoformat(),
             "event_type": "simulation_end",
@@ -111,7 +111,20 @@ class PlatformActionLogger:
             "total_rounds": total_rounds,
             "total_actions": total_actions,
         }
-        
+
+        with open(self.log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+
+    def log_simulation_stopped(self, rounds_completed: int, total_actions: int):
+        """记录模拟被中断（未完成所有轮次，如手动停止或信号中断）"""
+        entry = {
+            "timestamp": datetime.now().isoformat(),
+            "event_type": "simulation_stopped",
+            "platform": self.platform,
+            "rounds_completed": rounds_completed,
+            "total_actions": total_actions,
+        }
+
         with open(self.log_path, 'a', encoding='utf-8') as f:
             f.write(json.dumps(entry, ensure_ascii=False) + '\n')
 
