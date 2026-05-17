@@ -10,6 +10,7 @@ from flask import request, jsonify, send_file, Response
 from . import simulation_bp
 from .. import get_storage
 from ..config import Config
+from ..config_db import get_config
 from ..services.zep_entity_reader import ZepEntityReader
 from ..services.oasis_profile_generator import OasisProfileGenerator
 from ..services.simulation_manager import SimulationManager, SimulationStatus
@@ -1722,6 +1723,10 @@ def start_simulation():
                     "success": False,
                     "error": t('api.maxRoundsInvalid')
                 }), 400
+
+        # If not provided in request, use DB value (DB > env precedence)
+        if max_rounds is None:
+            max_rounds = get_config('simulation.max_rounds', Config.OASIS_DEFAULT_MAX_ROUNDS)
 
         if platform not in ['twitter', 'reddit', 'parallel']:
             return jsonify({
