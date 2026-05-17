@@ -932,5 +932,31 @@
     "readOnlyMode": "Mode consulta",
     "editSection": "Editar aquesta secció",
     "launchSimulation": "▶ Llançar simulació"
+  },
+  "email": {
+    "common": {
+      "urlFallbackLabel": "Si el botó no funciona, copia aquest URL al navegador:",
+      "footer": "MiroFish — Plataforma de simulació multi-agent amb IA"
+    },
+    "invitation": {
+      "subject": "T'han convidat a MiroFish",
+      "subtitle": "Plataforma de simulació multi-agent",
+      "greeting": "Hola, {name}!",
+      "body1": "Has estat convidat/da a MiroFish, la plataforma de simulació multi-agent amb intel·ligència artificial.",
+      "body2": "Fes clic al botó per establir la teva contrasenya i activar el compte.",
+      "cta": "Acceptar invitació",
+      "ttlNotice": "Aquest enllaç és vàlid durant {hours} hores.",
+      "ignore": "Si no esperaves aquesta invitació, pots ignorar aquest missatge.",
+      "plainBody": "Has estat convidat/da a MiroFish. Per completar el teu registre, accedeix a:"
+    },
+    "passwordReset": {
+      "subject": "MiroFish — Sol·licitud de canvi de contrasenya",
+      "greeting": "Hola, {email}!",
+      "body": "Hem rebut una sol·licitud per canviar la contrasenya del teu compte de MiroFish. Si no has estat tu, pots ignorar aquest correu i la contrasenya no canviarà.",
+      "cta": "Canviar la contrasenya",
+      "ttlNotice": "Aquest enllaç és vàlid durant {hours} hores.",
+      "ignore": "Si no has sol·licitat cap canvi de contrasenya, pots ignorar aquest missatge.",
+      "plainCta": "Per canviar la contrasenya, accedeix a:"
+    }
   }
 }
