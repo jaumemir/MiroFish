@@ -85,9 +85,9 @@ Fes clic a la imatge per veure la predicció profunda de MiroFish del final perd
 
 ## 🔄 Flux de treball
 
-1. **Construcció del graf**: Extracció de llavors & Injecció de memòria individual/col·lectiva & Construcció de GraphRAG
-2. **Configuració de l'entorn**: Extracció de relacions entre entitats & Generació de persones & Injecció de configuració d'Agents
-3. **Simulació**: Simulació paral·lela en dues plataformes & Anàlisi automàtica de requisits de predicció & Actualitzacions dinàmiques de memòria temporal
+1. **Construcció del graf**: Puja documents llavor → generació d'ontologia → extracció d'entitats i relacions → graf de coneixement
+2. **Configuració de l'entorn**: Generació de perfils d'agents (personalitat, stance, perfil d'activitat) a partir del graf
+3. **Simulació**: Simulació paral·lela en diverses plataformes (Info Plaza + Topic Community) & actualitzacions dinàmiques de memòria
 4. **Generació de l'informe**: ReportAgent amb conjunt d'eines avançat per a la interacció profunda amb l'entorn post-simulació
 5. **Interacció profunda**: Xateja amb qualsevol agent del món simulat & Interactua amb ReportAgent
 
@@ -144,7 +144,14 @@ npm run setup
 npm run setup:backend
 ```
 
-#### 3. Iniciar els serveis
+#### 3. Inicialitzar la base de dades
+
+```bash
+# Crea les taules i l'usuari admin inicial (només el primer cop)
+uv run python backend/scripts/init_system.py
+```
+
+#### 4. Iniciar els serveis
 
 ```bash
 # Iniciar frontend i backend (executar des de l'arrel del projecte)
@@ -154,6 +161,8 @@ npm run dev
 **URLs dels serveis:**
 - Frontend: `http://localhost:3000`
 - Backend API: `http://localhost:5001`
+
+Fes login amb l'`ADMIN_EMAIL` / `ADMIN_PASSWORD` que has configurat al `.env`.
 
 **Iniciar individualment:**
 

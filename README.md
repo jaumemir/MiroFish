@@ -85,9 +85,9 @@ Click the image to watch MiroFish's deep prediction of the lost ending based on 
 
 ## 🔄 Workflow
 
-1. **Graph Building**: Seed extraction & Individual/collective memory injection & GraphRAG construction
-2. **Environment Setup**: Entity relationship extraction & Persona generation & Agent configuration injection
-3. **Simulation**: Dual-platform parallel simulation & Auto-parse prediction requirements & Dynamic temporal memory updates
+1. **Graph Building**: Upload seed documents → ontology generation → entity/relationship extraction → knowledge graph
+2. **Environment Setup**: Agent persona generation (personality, stance, activity profile) from the graph
+3. **Simulation**: Multi-platform parallel simulation (Info Plaza + Topic Community) & dynamic memory updates
 4. **Report Generation**: ReportAgent with rich toolset for deep interaction with post-simulation environment
 5. **Deep Interaction**: Chat with any agent in the simulated world & Interact with ReportAgent
 
@@ -144,7 +144,14 @@ npm run setup
 npm run setup:backend
 ```
 
-#### 3. Start Services
+#### 3. Initialize the Database
+
+```bash
+# Create tables and the initial admin user (first run only)
+uv run python backend/scripts/init_system.py
+```
+
+#### 4. Start Services
 
 ```bash
 # Start both frontend and backend (run from project root)
@@ -154,6 +161,8 @@ npm run dev
 **Service URLs:**
 - Frontend: `http://localhost:3000`
 - Backend API: `http://localhost:5001`
+
+Log in with the `ADMIN_EMAIL` / `ADMIN_PASSWORD` you set in `.env`.
 
 **Start Individually:**
 

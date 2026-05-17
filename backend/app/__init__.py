@@ -27,6 +27,37 @@ _PUBLIC_PREFIXES = (
 )
 
 
+def _ensure_admin_user(config):
+    """Crea l'usuari admin si no existeix cap usuari a la BD."""
+    admin_email = config.get('ADMIN_EMAIL', '')
+    admin_password = config.get('ADMIN_PASSWORD', '')
+    if not admin_email or not admin_password:
+        return
+
+    import logging
+    log = logging.getLogger('mirofish')
+    try:
+        from sqlalchemy import select
+        from .db import get_session
+        from .models.db_models import UserModel
+        from .services.auth_service import hash_password
+        with get_session() as db:
+            if db.execute(select(UserModel).limit(1)).scalar_one_or_none() is None:
+                db.add(UserModel(
+                    email=admin_email.lower().strip(),
+                    name="Admin",
+                    role="admin",
+                    status="active",
+                    password_hash=hash_password(admin_password),
+                ))
+                db.commit()
+                log.info(f"Admin creat: {admin_email}")
+            else:
+                log.debug("Usuaris existents, admin no creat")
+    except Exception as e:
+        log.error(f"Error creant admin: {e}")
+
+
 def create_app(config_class=Config):
     """Flask application factory"""
     app = Flask(__name__)
@@ -39,6 +70,7 @@ def create_app(config_class=Config):
     # Inicialitzar BD
     from .db import init_db
     init_db(app.config['DATABASE_URL'])
+    _ensure_admin_user(app.config)
 
     # Inicialitzar Storage
     from .storage import create_storage_service

@@ -85,9 +85,9 @@ Haz clic en la imagen para ver la predicción profunda de MiroFish del final per
 
 ## 🔄 Flujo de trabajo
 
-1. **Construcción del grafo**: Extracción de semillas & Inyección de memoria individual/colectiva & Construcción de GraphRAG
-2. **Configuración del entorno**: Extracción de relaciones entre entidades & Generación de personajes & Inyección de configuración de Agentes
-3. **Simulación**: Simulación paralela en dos plataformas & Análisis automático de requisitos de predicción & Actualización dinámica de memoria temporal
+1. **Construcción del grafo**: Sube documentos semilla → generación de ontología → extracción de entidades y relaciones → grafo de conocimiento
+2. **Configuración del entorno**: Generación de perfiles de agentes (personalidad, stance, perfil de actividad) a partir del grafo
+3. **Simulación**: Simulación paralela en múltiples plataformas (Info Plaza + Topic Community) & actualizaciones dinámicas de memoria
 4. **Generación de informe**: ReportAgent con amplio conjunto de herramientas para interacción profunda con el entorno post-simulación
 5. **Interacción profunda**: Conversa con cualquier agente del mundo simulado & Interactúa con ReportAgent
 
@@ -144,7 +144,14 @@ npm run setup
 npm run setup:backend
 ```
 
-#### 3. Iniciar servicios
+#### 3. Inicializar la base de datos
+
+```bash
+# Crea las tablas y el usuario admin inicial (solo la primera vez)
+uv run python backend/scripts/init_system.py
+```
+
+#### 4. Iniciar servicios
 
 ```bash
 # Iniciar frontend y backend (ejecutar desde la raíz del proyecto)
@@ -154,6 +161,8 @@ npm run dev
 **URLs de servicios:**
 - Frontend: `http://localhost:3000`
 - Backend API: `http://localhost:5001`
+
+Inicia sesión con el `ADMIN_EMAIL` / `ADMIN_PASSWORD` que configuraste en `.env`.
 
 **Iniciar individualmente:**
 

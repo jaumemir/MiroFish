@@ -48,14 +48,22 @@ LLM_BOOST_API_KEY=
 LLM_BOOST_BASE_URL=
 LLM_BOOST_MODEL_NAME=
 
-# ── Autenticació ──────────────────────────────────────────────────
-# Contrasenya de l'usuari "demo" per accedir a l'app
-DEMO_PASSWORD=una-contrasenya-segura
+# ── Autenticació JWT ──────────────────────────────────────────────
+# Genera la clau amb: python -c "import secrets; print(secrets.token_hex(32))"
+JWT_SECRET_KEY=una-clau-secreta-llarga
 
-# Clau per signar tokens JWT
-# Genera-la amb: python -c "import secrets; print(secrets.token_hex(32))"
-SECRET_KEY=una-clau-secreta-llarga
+# ── Admin inicial (creat per init_system.py) ──────────────────────
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=canvia-a-producció
 ```
+
+### Inicialització de la base de dades
+
+```bash
+uv run python backend/scripts/init_system.py
+```
+
+Aquest script crea les taules (via Alembic) i l'usuari admin inicial. Només cal executar-lo el primer cop.
 
 ### Execució
 
@@ -64,7 +72,7 @@ npm run dev
 ```
 
 Obre el navegador a `http://localhost:3000`.  
-Fes login amb usuari `demo` i la `DEMO_PASSWORD` que has configurat.
+Fes login amb l'`ADMIN_EMAIL` i `ADMIN_PASSWORD` que has configurat.
 
 > El frontend (port 3000) i el backend (port 5001) s'inicien simultàniament.  
 > Vite proxia automàticament les peticions `/api/*` al backend.
@@ -117,8 +125,9 @@ Edita `azure/config.sh` i omple **tots** els valors:
 |---|---|---|
 | `AZURE_SUBSCRIPTION_ID` | ID de la subscripció Azure | `az account show --query id -o tsv` |
 | `AZURE_LOCATION` | Regió Azure (ex: `westeurope`) | [Llista de regions](https://azure.microsoft.com/regions/) |
-| `DEMO_PASSWORD` | Contrasenya de l'usuari `demo` | Escull una contrasenya segura |
-| `SECRET_KEY` | Clau Flask per signar JWT | `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `JWT_SECRET_KEY` | Clau per signar tokens JWT | `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `ADMIN_EMAIL` | Email del primer admin | Escull un email vàlid |
+| `ADMIN_PASSWORD` | Contrasenya del primer admin | Escull una contrasenya segura |
 | `LLM_API_KEY` | Clau de l'API LLM | [Alibaba Bailian](https://bailian.console.aliyun.com/) o OpenAI |
 | `LLM_BASE_URL` | URL base de l'API LLM | Default: Alibaba Qwen |
 | `LLM_MODEL_NAME` | Nom del model | Default: `qwen-plus` |
@@ -228,7 +237,7 @@ Flask + gunicorn (1 worker, 4 threads)
 |---|---|---|
 | `ERROR: No s'ha trobat azure/config.sh` | Fitxer no creat | `cp azure/config.sh.example azure/config.sh` |
 | `Cannot login to ACR` | Docker no està en execució | `docker info` i arrenca Docker |
-| Login retorna 401 sempre | `DEMO_PASSWORD` buida o incorrecta | Verifica el valor a `config.sh` / secret Azure |
+| Login retorna 401 sempre | `ADMIN_PASSWORD` buida o incorrecta | Verifica el valor a `config.sh` / secret Azure |
 | Container App no arrenca | Imatge no trobada a l'ACR | Verifica que `2-build-deploy.sh` hagi finalitzat sense errors |
 | Token expirat al cap de 24h | Comportament esperat | Torna a fer login a `/login` |
 
@@ -373,7 +382,6 @@ NEO4J_PASSWORD=<secret: neo4j-password>
 
 ```bash
 # Executar els tests del factory (no requereix Neo4j ni Zep actius)
-cd .worktrees/feat-pluggable-graph-backend
 pytest backend/tests/test_graph_factory.py -v
 ```
 

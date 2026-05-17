@@ -20,7 +20,7 @@
 [![X](https://img.shields.io/badge/X-Follow-000000?style=flat-square&logo=x&logoColor=white)](https://x.com/mirofish_ai)
 [![Instagram](https://img.shields.io/badge/Instagram-Follow-E4405F?style=flat-square&logo=instagram&logoColor=white)](https://www.instagram.com/mirofish_ai/)
 
-[English](./README.md) | [中文文档](./README-ZH.md)
+[English](./README.md) | [中文文档](./README-ZH.md) | [Español](./README-ES.md) | [Català](./README-CA.md)
 
 </div>
 
@@ -85,9 +85,9 @@ MiroFish 致力于打造映射现实的群体智能镜像，通过捕捉个体�
 
 ## 🔄 工作流程
 
-1. **图谱构建**：现实种子提取 & 个体与群体记忆注入 & GraphRAG构建
-2. **环境搭建**：实体关系抽取 & 人设生成 & 环境配置Agent注入仿真参数
-3. **开始模拟**：双平台并行模拟 & 自动解析预测需求 & 动态更新时序记忆
+1. **图谱构建**：上传种子文档 → 本体生成 → 实体与关系提取 → 知识图谱构建
+2. **环境搭建**：从图谱生成Agent人设（个性、立场、活动配置）
+3. **开始模拟**：多平台并行模拟（信息广场 + 话题社区）& 动态更新时序记忆
 4. **报告生成**：ReportAgent拥有丰富的工具集与模拟后环境进行深度交互
 5. **深度互动**：与模拟世界中的任意一位进行对话 & 与ReportAgent进行对话
 
@@ -144,7 +144,14 @@ npm run setup
 npm run setup:backend
 ```
 
-#### 3. 启动服务
+#### 3. 初始化数据库
+
+```bash
+# 创建数据表并生成初始管理员账号（仅首次运行）
+uv run python backend/scripts/init_system.py
+```
+
+#### 4. 启动服务
 
 ```bash
 # 同时启动前后端（在项目根目录执行）
@@ -154,6 +161,8 @@ npm run dev
 **服务地址：**
 - 前端：`http://localhost:3000`
 - 后端 API：`http://localhost:5001`
+
+使用 `.env` 中配置的 `ADMIN_EMAIL` / `ADMIN_PASSWORD` 登录。
 
 **单独启动：**
 

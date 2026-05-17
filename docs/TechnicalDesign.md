@@ -38,45 +38,46 @@ El projecte usa fins a quatre grups de variables LLM, cadascun per a un ús dife
 ```env
 # ── Model principal (generatiu, potent) ──────────────────────────────────────
 LLM_API_KEY=...
-LLM_BASE_URL=https://<recurs>.cognitiveservices.azure.com/openai/deployments/<model>/chat/completions?api-version=2024-05-01-preview
-LLM_MODEL_NAME=gpt-5.4
+LLM_BASE_URL=https://...
+LLM_MODEL_NAME=gpt-4o
+
+# ── Proveïdor Gemini (opcional) ──────────────────────────────────────────────
+# LLM_PROVIDER=gemini  → configura automàticament l'endpoint de Google AI Studio
 
 # ── Model petit/ràpid (lightweight, econòmic) ────────────────────────────────
 # Fallback a LLM_* si no definit
 LLM_SMALL_API_KEY=...
-LLM_SMALL_BASE_URL=https://<recurs>.cognitiveservices.azure.com/openai/deployments/<small-model>/chat/completions?api-version=2024-05-01-preview
-LLM_SMALL_MODEL_NAME=gpt-5-mini
+LLM_SMALL_BASE_URL=...
+LLM_SMALL_MODEL_NAME=gpt-4o-mini
 
 # ── Model d'embedding (vectorització) ────────────────────────────────────────
 # Fallback a LLM_* si no definit. Requerit per Graphiti.
 LLM_EMBED_API_KEY=...
-LLM_EMBED_BASE_URL=https://<recurs>.services.ai.azure.com/openai/deployments/<embed-model>/embeddings?api-version=2024-05-01-preview
+LLM_EMBED_BASE_URL=...
 LLM_EMBED_MODEL_NAME=text-embedding-3-large
 
 # ── Model boost (simulació OASIS, opcional) ──────────────────────────────────
 # Fallback a LLM_* si no definit
 LLM_BOOST_API_KEY=...
 LLM_BOOST_BASE_URL=...
-LLM_BOOST_MODEL_NAME=gpt-5.4
+LLM_BOOST_MODEL_NAME=...
 ```
 
 ### Mapa d'usos per operació
 
 | Grup de variables | Component | Operació |
 |---|---|---|
-| `LLM_*` | `OntologyGenerator` | Pas 1 — Anàlisi del document i generació d'ontologia (tipus d'entitat i relació) |
-| `LLM_*` | `GraphBuilderService` (mode Zep) | Pas 2 — Extracció d'entitats i relacions del text via Zep SDK |
-| `LLM_*` | Graphiti `OpenAIClient` (mode graphiti) | Pas 2 — Extracció d'entitats i relacions del text via graphiti-core |
-| `LLM_*` | `OasisProfileGenerator` | Pas 2 — Generació de perfils d'agents OASIS a partir del graf |
-| `LLM_*` | `ReportAgent` | Pas 4 — Generació de l'informe analític final (multi-turn, tool use) |
-| `LLM_SMALL_*` | Graphiti `OpenAIRerankerClient` | Pas 2 — Reranking de resultats de cerca al graf (mode graphiti) |
-| `LLM_SMALL_*` | Graphiti `ModelSize.small` | Pas 2 — Tasques lleugeres internes de graphiti (extracció simplificada) |
-| `LLM_EMBED_*` | Graphiti `OpenAIEmbedder` | Pas 2 — Generació de vectors d'embedding per a indexació i cerca semàntica a Neo4j (mode graphiti) |
-| `LLM_BOOST_*` | `SimulationRunner` / `run_parallel_simulation.py` | Pas 3 — Decisions d'acció de cada agent durant la simulació OASIS |
+| `LLM_*` | `OntologyGenerator` | Pas 1 — Anàlisi del document i generació d'ontologia |
+| `LLM_*` | `GraphBuilderService` (mode Zep) | Pas 1 — Extracció d'entitats i relacions via Zep SDK |
+| `LLM_*` | Graphiti `OpenAIGenericClient` (mode graphiti) | Pas 1 — Extracció d'entitats via graphiti-core |
+| `LLM_*` | `OasisProfileGenerator` | Pas 2 — Generació de perfils d'agents OASIS |
+| `LLM_*` | `ReportAgent` | Pas 4 — Generació de l'informe analític (multi-turn, tool use) |
+| `LLM_SMALL_*` | Graphiti `OpenAIRerankerClient` | Pas 1 — Reranking de resultats de cerca (mode graphiti) |
+| `LLM_SMALL_*` | Graphiti `ModelSize.small` | Pas 1 — Tasques lleugeres internes de graphiti |
+| `LLM_EMBED_*` | Graphiti `OpenAIEmbedder` | Pas 1 — Vectors d'embedding per a Neo4j (mode graphiti) |
+| `LLM_BOOST_*` | `SimulationRunner` / `run_parallel_simulation.py` | Pas 3 — Decisions d'acció de cada agent durant la simulació |
 
 ### API endpoint usada per cada component
-
-Tots els components del projecte usen **`chat.completions`** o **`embeddings`** — mai `responses` (beta).
 
 | Component | API endpoint | Nota |
 |---|---|---|
@@ -96,32 +97,24 @@ Tots els components del projecte usen **`chat.completions`** o **`embeddings`** 
 
 - `LLM_BASE_URL` accepta la URL completa d'Azure (`/chat/completions?api-version=...`). El codi la processa automàticament: extreu el `api-version` com a `default_query` i retalla el sufix per al SDK.
 - El mateix tractament s'aplica a `LLM_EMBED_BASE_URL` (sufix `/embeddings?api-version=...`).
-- `LLM_SMALL_BASE_URL` accepta directament la URL base d'Azure AI Foundry (`services.ai.azure.com/api/projects/<proj>/openai/v1/`) sense sufix ni `api-version`.
-- `LLM_EMBED_BASE_URL` pot usar el domini `services.ai.azure.com` o `cognitiveservices.azure.com`.
-
-### Recomanació de models (Azure OpenAI)
-
-| Grup | Model recomanat | Motiu |
-|------|----------------|-------|
-| `LLM_*` | `gpt-5.4` | Raonament complex: ontologia, extracció de graf, informes |
-| `LLM_SMALL_*` | `gpt-5-mini` | Tasques lleugeres i econòmiques: reranking, classificació |
-| `LLM_EMBED_*` | `text-embedding-3-large` | Màxima qualitat d'embedding semàntic |
-| `LLM_BOOST_*` | `gpt-5.4` o `gpt-5-mini` | Simulació: moltes crides curtes, prioritzar velocitat/cost |
+- `LLM_SMALL_BASE_URL` accepta directament la URL base d'Azure AI Foundry sense sufix ni `api-version`.
 
 ---
 
 ## Pipeline de 5 passos
 
 ```
-Pas 1 — Graph Build (ontologia)
-  └─ OntologyGenerator  →  LLM_*
-
-Pas 2 — Graph Build (construcció)
-  ├─ mode zep:      GraphBuilderService + Zep SDK  →  LLM_*
+Pas 1 — Graph Build (ontologia + construcció)
+  ├─ OntologyGenerator           →  LLM_*
+  ├─ mode zep:   GraphBuilderService + Zep SDK  →  LLM_*
   └─ mode graphiti: GraphitiBackend
-       ├─ extracció:   OpenAIGenericClient  →  LLM_*  (chat.completions)
+       ├─ extracció:   OpenAIGenericClient   →  LLM_*
        ├─ reranking:   OpenAIRerankerClient  →  LLM_SMALL_*
-       └─ embedding:   OpenAIEmbedder    →  LLM_EMBED_*
+       └─ embedding:   OpenAIEmbedder        →  LLM_EMBED_*
+
+Pas 2 — Environment Setup (agents)
+  ├─ OasisProfileGenerator       →  LLM_*  (perfils individuals del graf)
+  └─ SimulationConfigGenerator   →  LLM_*  (comportament per batch de 15)
 
 Pas 3 — Simulació OASIS
   └─ SimulationRunner / run_parallel_simulation.py  →  LLM_BOOST_* (o LLM_*)
@@ -135,12 +128,96 @@ Pas 5 — Interacció live
 
 ---
 
+## Generació d'agents (Pas 2)
+
+Els agents reben un `stance` (actitud) que determina el seu posicionament respecte al tema de la simulació:
+
+| Valor | Significat |
+|-------|-----------|
+| `supportive` | A favor del tema principal |
+| `opposing` | En contra del tema principal |
+| `neutral` | Sense posició definida |
+| `observer` | Observador passiu (típic per a media) |
+
+**No hi ha balanceig per percentatge.** El LLM decideix el stance de cada agent en funció del context de l'entitat (tipus, resum, atributs). Els guidelines del prompt estableixen `neutral` per defecte per a institucions, individus i experts; `observer` per a outlets de media. Si el LLM falla, un fallback rule-based assigna `neutral` o `observer` per tipus d'entitat.
+
+---
+
+## Autenticació i Autorització
+
+- **Framework**: `flask-jwt-extended`
+- **Tokens**: Access (8h) + Refresh (7d), transmesos com `Authorization: Bearer <token>`
+- **Rols**: `admin` (accés total) i `user` (accés als seus propis projectes)
+- **Estatus d'usuari**: `pending` → `active` → `disabled`
+- **Decoradors**: `@require_admin` (admin only), `@require_project_owner` (propietari o admin)
+- **Rutes públiques**: `/health`, `/api/auth/login`, `/api/auth/forgot-password`, `/api/auth/reset-password`, `/api/auth/set-password`, `/api/auth/invitation/*`
+
+### Flux d'invitació
+
+```
+Admin crea usuari (POST /api/users/)
+  → es genera InvitationToken (TTL: 48h per defecte)
+  → s'envia email amb link via Azure Communication Services
+  → usuari fa clic → GET /api/auth/invitation/<token>
+  → usuari estableix contrasenya → POST /api/auth/set-password
+  → estatus canvia pending → active
+```
+
+---
+
+## Models de dades (SQLAlchemy)
+
+| Model | Taula | Camps clau |
+|-------|-------|-----------|
+| `UserModel` | users | id, email, name, password_hash, role, status |
+| `ProjectModel` | projects | id, user_id, name, status, active_task_id |
+| `ProjectFileModel` | project_files | id, project_id, original_name, storage_path |
+| `OntologyModel` | ontologies | id, project_id, version, entity_types, edge_types |
+| `GraphModel` | graphs | id, project_id, ontology_id, backend, external_id, status |
+| `SimulationModel` | simulations | id, project_id, graph_id, status, platform, config, rounds_total |
+| `ReportModel` | reports | id, project_id, simulation_id, status, outline, storage_prefix |
+| `TaskModel` | tasks | id, task_type, entity_id, status, progress, message, result |
+| `SystemConfigModel` | system_config | key, value, value_type, group, label, is_secret |
+| `InvitationTokenModel` | invitation_tokens | token, user_id, expires_at, used_at |
+| `PasswordResetTokenModel` | password_reset_tokens | token, user_id, expires_at, used_at |
+
+**Base de dades**: SQLite per defecte (`sqlite:///mirofish_dev.db`). Configurable via `DATABASE_URL`. Migracions gestionades amb Alembic.
+
+---
+
+## Storage
+
+| Tipus | Descripció | Variables |
+|-------|-----------|-----------|
+| `local` (per defecte) | Sistema de fitxers local | `STORAGE_LOCAL_PATH` (default: `backend/uploads`) |
+| `azure` | Azure Blob Storage | `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER` |
+
+---
+
 ## Internacionalització (i18n)
 
-- Fitxers de traducció: `/locales/{ca,en,es,zh}.json` — compartits per frontend i backend.
+- Fitxers de traducció: `/locales/{ca,en,es}.json` — compartits per frontend i backend.
 - Instruccions de llengua per al LLM: `/locales/languages.json` (clau `llmInstruction`).
 - El frontend injecta el locale actual via header `Accept-Language` a cada petició API.
 - El backend detecta el locale a `backend/app/utils/locale.py:get_locale()` i l'usa per:
   - Traduccions de missatges d'error (`t()`)
   - Instruccions d'idioma als prompts LLM (`get_language_instruction()`)
-- L'ontologia generada (descripcions, exemples, `analysis_summary`) sortirà en l'idioma de la UI. Els **noms** de tipus d'entitat i relació seguiran PascalCase/UPPER\_SNAKE\_CASE en l'idioma de la UI (p.ex. `AgenciaGovern`, `TREBALLA_PER` en català).
+- L'ontologia generada sortirà en l'idioma de la UI. Els **noms** de tipus d'entitat i relació seguiran PascalCase/UPPER\_SNAKE\_CASE (p.ex. `AgenciaGovern`, `TREBALLA_PER` en català).
+
+---
+
+## Inicialització del sistema
+
+El primer cop que s'instal·la el sistema cal executar:
+
+```bash
+ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=secret \
+  uv run python backend/scripts/init_system.py
+```
+
+Aquest script:
+1. Connecta a la BD (`DATABASE_URL`)
+2. Executa les migracions Alembic (`alembic upgrade head`)
+3. Crea l'usuari admin inicial si no existeix
+
+En producció, `ADMIN_EMAIL` i `ADMIN_PASSWORD` s'estableixen al `.env`.
