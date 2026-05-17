@@ -75,6 +75,107 @@ def list_executions():
     return jsonify({'success': True, 'data': result, 'total': total, 'page': page, 'pageSize': page_size})
 
 
+@admin_bp.route('/projects/<project_id>', methods=['GET'])
+@require_admin
+def get_admin_project(project_id):
+    with get_session() as db:
+        proj = db.get(ProjectModel, project_id)
+        if not proj:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+        user = db.get(UserModel, proj.user_id) if proj.user_id else None
+        graphs = db.execute(
+            select(GraphModel).where(GraphModel.project_id == project_id)
+            .order_by(GraphModel.created_at)
+        ).scalars().all()
+        simulations = db.execute(
+            select(SimulationModel).where(SimulationModel.project_id == project_id)
+            .order_by(SimulationModel.created_at)
+        ).scalars().all()
+        data = {
+            'project_id': proj.id,
+            'name': proj.name,
+            'status': proj.status,
+            'created_at': proj.created_at.isoformat(),
+            'owner_email': user.email if user else None,
+            'owner_name': user.name if user else None,
+            'graphs': [
+                {
+                    'graph_id': g.id,
+                    'external_id': g.external_id,
+                    'backend': g.backend,
+                    'status': g.status,
+                    'node_count': g.node_count,
+                    'edge_count': g.edge_count,
+                    'created_at': g.created_at.isoformat(),
+                }
+                for g in graphs
+            ],
+            'simulations': [
+                {
+                    'simulation_id': s.id,
+                    'graph_id': s.graph_id,
+                    'status': s.status,
+                    'platform': s.platform,
+                    'rounds_total': s.rounds_total,
+                    'rounds_completed': s.rounds_completed,
+                    'created_at': s.created_at.isoformat(),
+                }
+                for s in simulations
+            ],
+        }
+    return jsonify({'success': True, 'data': data})
+
+
+@admin_bp.route('/projects/<project_id>', methods=['DELETE'])
+@require_admin
+def delete_admin_project(project_id):
+    import logging
+    logger = logging.getLogger('mirofish.admin')
+    from .. import get_storage
+    from ..services.graph_builder import GraphBuilderService
+    from sqlalchemy.orm import selectinload
+
+    storage = get_storage()
+    with get_session() as db:
+        proj = db.execute(
+            select(ProjectModel)
+            .where(ProjectModel.id == project_id)
+            .options(selectinload(ProjectModel.graphs))
+        ).scalar_one_or_none()
+        if not proj:
+            return jsonify({'success': False, 'error': 'Project not found'}), 404
+
+        for graph in proj.graphs:
+            if graph.external_id:
+                try:
+                    GraphBuilderService().delete_graph(graph.external_id)
+                except Exception as exc:
+                    logger.warning('delete_admin_project: delete_graph(%s) failed: %s',
+                                   graph.external_id, exc)
+        try:
+            storage.delete_prefix(f'projects/{project_id}')
+        except Exception as exc:
+            logger.warning('delete_admin_project: storage.delete_prefix(%s) failed: %s',
+                           project_id, exc)
+
+        db.delete(proj)
+        db.commit()
+
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/simulations/<simulation_id>', methods=['DELETE'])
+@require_admin
+def delete_admin_simulation(simulation_id):
+    with get_session() as db:
+        sim = db.get(SimulationModel, simulation_id)
+        if not sim:
+            return jsonify({'success': False, 'error': 'Simulation not found'}), 404
+        db.delete(sim)
+        db.commit()
+    return jsonify({'success': True})
+
+
 @admin_bp.route('/projects', methods=['GET'])
 @require_admin
 def list_admin_projects():
