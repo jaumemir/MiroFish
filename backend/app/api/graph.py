@@ -176,8 +176,8 @@ def list_projects():
     """
     limit = request.args.get('limit', 50, type=int)
     user = get_current_user()
-    # Admin i mode TESTING (user=None) veuen tots; usuaris normals veuen els seus
-    filter_user_id = None if (user is None or user.role == 'admin') else user.id
+    # None only in TESTING (user is None); both admin and regular users see only their own projects here
+    filter_user_id = user.id if user is not None else None
     projects = ProjectManager.list_projects(limit=limit, user_id=filter_user_id)
     return jsonify({"success": True, "data": projects, "count": len(projects)})
 
