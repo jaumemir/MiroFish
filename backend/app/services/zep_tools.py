@@ -1484,10 +1484,7 @@ Return a JSON list of sub-questions."""
         import csv
         
         # Build persona file path
-        sim_dir = os.path.join(
-            os.path.dirname(__file__), 
-            f'../../uploads/simulations/{simulation_id}'
-        )
+        sim_dir = os.path.join(Config.OASIS_SIMULATION_DATA_DIR, simulation_id)
         
         profiles = []
         

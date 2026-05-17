@@ -174,6 +174,15 @@ def generate_report():
                             "status": "completed"
                         }
                     )
+                    # Marcar la simulació com a COMPLETED ara que l'informe existeix
+                    try:
+                        from ..services.simulation_manager import SimulationStatus
+                        sim_state = manager.get_simulation(simulation_id)
+                        if sim_state and sim_state.status not in (SimulationStatus.COMPLETED,):
+                            sim_state.status = SimulationStatus.COMPLETED
+                            manager._save_simulation_state(sim_state)
+                    except Exception:
+                        pass
                 else:
                     task_manager.fail_task(task_id, report.error or t('api.reportGenerateFailed'))
                 

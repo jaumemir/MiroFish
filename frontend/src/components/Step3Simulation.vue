@@ -107,9 +107,30 @@
           </label>
         </div>
         </fieldset>
+        <!-- Botó atura (quan s'executa) -->
+        <button
+          v-if="phase === 1"
+          class="action-btn stop"
+          :disabled="isStopping"
+          @click="handleStopSimulation"
+        >
+          <span v-if="isStopping" class="loading-spinner-small"></span>
+          {{ isStopping ? $t('step3.stoppingSimBtn') : $t('step3.stopSimBtn') }}
+        </button>
+        <!-- Botó reprèn (quan pausada) -->
+        <button
+          v-if="phase === 0 && canResume"
+          class="action-btn resume"
+          :disabled="isResuming"
+          @click="handleResumeSimulation"
+        >
+          <span v-if="isResuming" class="loading-spinner-small"></span>
+          {{ isResuming ? $t('step3.resumingSim') : $t('step3.resumeSimBtn') }}
+        </button>
+        <!-- Botó genera informe (quan completada o pausada) -->
         <button
           class="action-btn primary"
-          :disabled="phase !== 2 || isGeneratingReport"
+          :disabled="(phase !== 2 && !canResume) || isGeneratingReport"
           @click="handleNextStep"
         >
           <span v-if="isGeneratingReport" class="loading-spinner-small"></span>
@@ -338,10 +359,12 @@ const router = useRouter()
 
 // State
 const isGeneratingReport = ref(false)
-const phase = ref(0) // 0: 未开始, 1: 运行中, 2: 已完成
+const phase = ref(0) // 0: 未开始/pausada, 1: 运行中, 2: 已完成
 const enableGraphMemoryUpdate = ref(true)
 const isStarting = ref(false)
 const isStopping = ref(false)
+const isResuming = ref(false)
+const canResume = ref(false) // true quan la simulació estava pausada i té dades
 const startError = ref(null)
 const runStatus = ref({})
 const allActions = ref([]) // 所有动作（增量累积）
@@ -440,6 +463,8 @@ const resetAllState = () => {
   startError.value = null
   isStarting.value = false
   isStopping.value = false
+  isResuming.value = false
+  canResume.value = false
   stopPolling()  // 停止之前可能存在的轮询
 }
 
@@ -517,8 +542,9 @@ const handleStopSimulation = async () => {
     
     if (res.success) {
       addLog(t('log.simStoppedSuccess'))
-      phase.value = 2
       stopPolling()
+      phase.value = 0
+      canResume.value = true
       emit('update-status', 'completed')
     } else {
       addLog(t('log.stopFailed', { error: res.error || t('common.unknownError') }))
@@ -527,6 +553,50 @@ const handleStopSimulation = async () => {
     addLog(t('log.stopException', { error: err.message }))
   } finally {
     isStopping.value = false
+  }
+}
+
+// Reprendre la simulació pausada
+const handleResumeSimulation = async () => {
+  if (!props.simulationId) return
+
+  isResuming.value = true
+  addLog(t('step3.resumingSim'))
+  emit('update-status', 'processing')
+
+  try {
+    const params = {
+      simulation_id: props.simulationId,
+      platform: 'parallel',
+      force: false,  // no esborrar logs existents
+      enable_graph_memory_update: enableGraphMemoryUpdate.value
+    }
+
+    if (props.maxRounds) {
+      params.max_rounds = props.maxRounds
+    }
+
+    const res = await startSimulation(params)
+
+    if (res.success && res.data) {
+      addLog(t('step3.simResumed'))
+      if (res.data.graph_id_simulation) {
+        emit('update-graph-id', res.data.graph_id_simulation)
+      }
+      canResume.value = false
+      phase.value = 1
+      runStatus.value = res.data
+      startStatusPolling()
+      startDetailPolling()
+    } else {
+      addLog(t('step3.resumeFailed', { error: res.error || t('common.unknownError') }))
+      emit('update-status', 'error')
+    }
+  } catch (err) {
+    addLog(t('step3.resumeException', { error: err.message }))
+    emit('update-status', 'error')
+  } finally {
+    isResuming.value = false
   }
 }
 
@@ -783,7 +853,7 @@ onMounted(async () => {
         await doReconnectSimulation()
         return
       }
-      if (status === 'completed' || status === 'stopped' || status === 'failed') {
+      if (status === 'completed' || status === 'failed') {
         runStatus.value = res.data
         phase.value = 2
         emit('update-status', 'completed')
@@ -793,6 +863,16 @@ onMounted(async () => {
         } else {
           addLog(t('log.simAlreadyCompleted'))
         }
+        return
+      }
+      if (status === 'stopped') {
+        // Simulació pausada: carregar dades existents i oferir reprendre
+        runStatus.value = res.data
+        await fetchRunStatusDetail()
+        canResume.value = true
+        phase.value = 0
+        emit('update-status', 'completed')
+        addLog(t('step3.resumeSimBtn'))
         return
       }
     }
@@ -1031,6 +1111,28 @@ fieldset:disabled * {
 
 .action-btn.primary:hover:not(:disabled) {
   background: #333;
+}
+
+.action-btn.stop {
+  background: #fff;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.action-btn.stop:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.action-btn.resume {
+  background: #fff;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.action-btn.resume:hover:not(:disabled) {
+  background: #f0fdf4;
+  border-color: #16a34a;
 }
 
 .action-btn:disabled {

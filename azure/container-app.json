@@ -1,0 +1,444 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.42.1.51946",
+      "templateHash": "6893290435965154842"
+    }
+  },
+  "parameters": {
+    "projectName": {
+      "type": "string",
+      "defaultValue": "mirofish",
+      "metadata": {
+        "description": "Nom base del projecte"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Localització Azure dels recursos"
+      }
+    },
+    "containerAppsEnvId": {
+      "type": "string",
+      "metadata": {
+        "description": "ID del Container Apps Environment (output d'infra.bicep)"
+      }
+    },
+    "containerImage": {
+      "type": "string",
+      "metadata": {
+        "description": "Imatge Docker completa (acrLoginServer/nom:tag)"
+      }
+    },
+    "acrLoginServer": {
+      "type": "string",
+      "metadata": {
+        "description": "Login server de l'ACR (ex: mirofsihacr.azurecr.io)"
+      }
+    },
+    "acrUsername": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Nom d'usuari de l'ACR (az acr credential show --name <acr> --query username)"
+      }
+    },
+    "acrPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Contrasenya de l'ACR (az acr credential show --name <acr> --query passwords[0].value)"
+      }
+    },
+    "demoPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Contrasenya de l'usuari demo"
+      }
+    },
+    "llmApiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Clau de l'API LLM principal (OpenAI-compatible)"
+      }
+    },
+    "llmBoostApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Clau de l'API LLM acceleradora (opcional, deixar buit si no s'usa)"
+      }
+    },
+    "zepApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Clau de l'API Zep Cloud (obligatori si GRAPH_BACKEND=zep)"
+      }
+    },
+    "neo4jPassword": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Contrasenya de Neo4j (obligatori si GRAPH_BACKEND=graphiti)"
+      }
+    },
+    "secretKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "SECRET_KEY de Flask per a JWT (python -c \"import secrets; print(secrets.token_hex(32))\")"
+      }
+    },
+    "storageConnectionString": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Connection string del Storage Account per a Azure Files (output d'infra.bicep)"
+      }
+    },
+    "databaseUrl": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "DATABASE_URL PostgreSQL (output d'infra.bicep: postgresql+psycopg2://...)"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Nom del Storage Account (output d'infra.bicep)"
+      }
+    },
+    "llmBaseUrl": {
+      "type": "string",
+      "defaultValue": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "metadata": {
+        "description": "URL base de l'API LLM principal"
+      }
+    },
+    "llmModelName": {
+      "type": "string",
+      "defaultValue": "qwen-plus",
+      "metadata": {
+        "description": "Nom del model LLM principal"
+      }
+    },
+    "llmProvider": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Proveïdor LLM (gemini per a Google AI Studio; buit per a qualsevol compatible OpenAI)"
+      }
+    },
+    "graphBackend": {
+      "type": "string",
+      "defaultValue": "zep",
+      "metadata": {
+        "description": "Backend de graf: zep (Zep Cloud) o graphiti (Neo4j local/Azure)"
+      }
+    },
+    "neo4jUri": {
+      "type": "string",
+      "defaultValue": "bolt://localhost:7687",
+      "metadata": {
+        "description": "URI de connexió bolt de Neo4j (necessari si GRAPH_BACKEND=graphiti)"
+      }
+    },
+    "neo4jUser": {
+      "type": "string",
+      "defaultValue": "neo4j",
+      "metadata": {
+        "description": "Usuari de Neo4j"
+      }
+    },
+    "llmBoostBaseUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "URL base de l'API LLM acceleradora (opcional)"
+      }
+    },
+    "llmBoostModelName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Nom del model LLM accelerador (opcional)"
+      }
+    },
+    "llmEmbedApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Clau API LLM embeddings (opcional)"
+      }
+    },
+    "llmEmbedBaseUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "URL base LLM embeddings (opcional)"
+      }
+    },
+    "llmEmbedModelName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Nom del model d'embeddings"
+      }
+    },
+    "llmSmallApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Clau API LLM petit (opcional)"
+      }
+    },
+    "llmSmallBaseUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "URL base LLM petit (opcional)"
+      }
+    },
+    "llmSmallModelName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Nom del model LLM petit (opcional)"
+      }
+    },
+    "neo4jDatabase": {
+      "type": "string",
+      "defaultValue": "neo4j",
+      "metadata": {
+        "description": "Nom de la base de dades Neo4j"
+      }
+    },
+    "oasisDefaultMaxRounds": {
+      "type": "string",
+      "defaultValue": "10",
+      "metadata": {
+        "description": "Nombre màxim de rondes per a la simulació OASIS"
+      }
+    },
+    "reportAgentMaxToolCalls": {
+      "type": "string",
+      "defaultValue": "5",
+      "metadata": {
+        "description": "Nombre màxim de crides a eines del Report Agent"
+      }
+    },
+    "reportAgentMaxReflectionRounds": {
+      "type": "string",
+      "defaultValue": "2",
+      "metadata": {
+        "description": "Nombre màxim de rondes de reflexió del Report Agent"
+      }
+    },
+    "reportAgentTemperature": {
+      "type": "string",
+      "defaultValue": "0.5",
+      "metadata": {
+        "description": "Temperatura del model LLM per al Report Agent"
+      }
+    }
+  },
+  "variables": {
+    "mandatorySecrets": [
+      {
+        "name": "acr-password",
+        "value": "[parameters('acrPassword')]"
+      },
+      {
+        "name": "demo-password",
+        "value": "[parameters('demoPassword')]"
+      },
+      {
+        "name": "llm-api-key",
+        "value": "[parameters('llmApiKey')]"
+      },
+      {
+        "name": "secret-key",
+        "value": "[parameters('secretKey')]"
+      }
+    ],
+    "optionalSecrets": "[concat(if(empty(parameters('llmBoostApiKey')), createArray(), createArray(createObject('name', 'llm-boost-api-key', 'value', parameters('llmBoostApiKey')))), if(empty(parameters('llmEmbedApiKey')), createArray(), createArray(createObject('name', 'llm-embed-api-key', 'value', parameters('llmEmbedApiKey')))), if(empty(parameters('llmSmallApiKey')), createArray(), createArray(createObject('name', 'llm-small-api-key', 'value', parameters('llmSmallApiKey')))), if(empty(parameters('zepApiKey')), createArray(), createArray(createObject('name', 'zep-api-key', 'value', parameters('zepApiKey')))), if(empty(parameters('neo4jPassword')), createArray(), createArray(createObject('name', 'neo4j-password', 'value', parameters('neo4jPassword')))), if(empty(parameters('storageConnectionString')), createArray(), createArray(createObject('name', 'storage-connection-string', 'value', parameters('storageConnectionString')))), if(empty(parameters('databaseUrl')), createArray(), createArray(createObject('name', 'database-url', 'value', parameters('databaseUrl')))))]",
+    "allSecrets": "[concat(variables('mandatorySecrets'), variables('optionalSecrets'))]",
+    "mandatoryEnv": [
+      {
+        "name": "DEMO_PASSWORD",
+        "secretRef": "demo-password"
+      },
+      {
+        "name": "LLM_API_KEY",
+        "secretRef": "llm-api-key"
+      },
+      {
+        "name": "SECRET_KEY",
+        "secretRef": "secret-key"
+      },
+      {
+        "name": "LLM_BASE_URL",
+        "value": "[parameters('llmBaseUrl')]"
+      },
+      {
+        "name": "LLM_MODEL_NAME",
+        "value": "[parameters('llmModelName')]"
+      },
+      {
+        "name": "LLM_PROVIDER",
+        "value": "[parameters('llmProvider')]"
+      },
+      {
+        "name": "LLM_BOOST_BASE_URL",
+        "value": "[parameters('llmBoostBaseUrl')]"
+      },
+      {
+        "name": "LLM_BOOST_MODEL_NAME",
+        "value": "[parameters('llmBoostModelName')]"
+      },
+      {
+        "name": "GRAPH_BACKEND",
+        "value": "[parameters('graphBackend')]"
+      },
+      {
+        "name": "NEO4J_URI",
+        "value": "[parameters('neo4jUri')]"
+      },
+      {
+        "name": "NEO4J_USER",
+        "value": "[parameters('neo4jUser')]"
+      },
+      {
+        "name": "NEO4J_DATABASE",
+        "value": "[parameters('neo4jDatabase')]"
+      },
+      {
+        "name": "LLM_EMBED_BASE_URL",
+        "value": "[parameters('llmEmbedBaseUrl')]"
+      },
+      {
+        "name": "LLM_EMBED_MODEL_NAME",
+        "value": "[parameters('llmEmbedModelName')]"
+      },
+      {
+        "name": "LLM_SMALL_BASE_URL",
+        "value": "[parameters('llmSmallBaseUrl')]"
+      },
+      {
+        "name": "LLM_SMALL_MODEL_NAME",
+        "value": "[parameters('llmSmallModelName')]"
+      },
+      {
+        "name": "OASIS_DEFAULT_MAX_ROUNDS",
+        "value": "[parameters('oasisDefaultMaxRounds')]"
+      },
+      {
+        "name": "REPORT_AGENT_MAX_TOOL_CALLS",
+        "value": "[parameters('reportAgentMaxToolCalls')]"
+      },
+      {
+        "name": "REPORT_AGENT_MAX_REFLECTION_ROUNDS",
+        "value": "[parameters('reportAgentMaxReflectionRounds')]"
+      },
+      {
+        "name": "REPORT_AGENT_TEMPERATURE",
+        "value": "[parameters('reportAgentTemperature')]"
+      },
+      {
+        "name": "FLASK_DEBUG",
+        "value": "False"
+      },
+      {
+        "name": "OASIS_SIMULATION_DATA_DIR",
+        "value": "[if(empty(parameters('storageAccountName')), '/app/backend/uploads/simulations', '/mnt/uploads/simulations')]"
+      },
+      {
+        "name": "UPLOAD_FOLDER",
+        "value": "[if(empty(parameters('storageAccountName')), '/app/backend/uploads', '/mnt/uploads')]"
+      },
+      {
+        "name": "STORAGE_TYPE",
+        "value": "[if(empty(parameters('storageConnectionString')), 'local', 'azure')]"
+      }
+    ],
+    "optionalEnv": "[concat(if(empty(parameters('llmBoostApiKey')), createArray(), createArray(createObject('name', 'LLM_BOOST_API_KEY', 'secretRef', 'llm-boost-api-key'))), if(empty(parameters('llmEmbedApiKey')), createArray(), createArray(createObject('name', 'LLM_EMBED_API_KEY', 'secretRef', 'llm-embed-api-key'))), if(empty(parameters('llmSmallApiKey')), createArray(), createArray(createObject('name', 'LLM_SMALL_API_KEY', 'secretRef', 'llm-small-api-key'))), if(empty(parameters('zepApiKey')), createArray(), createArray(createObject('name', 'ZEP_API_KEY', 'secretRef', 'zep-api-key'))), if(empty(parameters('neo4jPassword')), createArray(), createArray(createObject('name', 'NEO4J_PASSWORD', 'secretRef', 'neo4j-password'))), if(empty(parameters('storageConnectionString')), createArray(), createArray(createObject('name', 'AZURE_STORAGE_CONNECTION_STRING', 'secretRef', 'storage-connection-string'))), if(empty(parameters('databaseUrl')), createArray(), createArray(createObject('name', 'DATABASE_URL', 'secretRef', 'database-url'))))]",
+    "allEnv": "[concat(variables('mandatoryEnv'), variables('optionalEnv'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2023-05-01",
+      "name": "[parameters('projectName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[parameters('containerAppsEnvId')]",
+        "configuration": {
+          "secrets": "[variables('allSecrets')]",
+          "registries": [
+            {
+              "server": "[parameters('acrLoginServer')]",
+              "username": "[parameters('acrUsername')]",
+              "passwordSecretRef": "acr-password"
+            }
+          ],
+          "ingress": {
+            "external": true,
+            "targetPort": 5001,
+            "transport": "http"
+          },
+          "activeRevisionsMode": "Single"
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "[parameters('projectName')]",
+              "image": "[parameters('containerImage')]",
+              "env": "[variables('allEnv')]",
+              "resources": {
+                "cpu": "[json('2.0')]",
+                "memory": "4Gi"
+              },
+              "volumeMounts": "[if(empty(parameters('storageAccountName')), createArray(), createArray(createObject('volumeName', 'uploads', 'mountPath', '/mnt/uploads')))]"
+            }
+          ],
+          "volumes": "[if(empty(parameters('storageAccountName')), createArray(), createArray(createObject('name', 'uploads', 'storageType', 'AzureFile', 'storageName', 'uploads')))]",
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 10,
+            "rules": [
+              {
+                "name": "http-scaling",
+                "http": {
+                  "metadata": {
+                    "concurrentRequests": "20"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "containerAppFqdn": {
+      "type": "string",
+      "metadata": {
+        "description": "FQDN públic de l'aplicació"
+      },
+      "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('projectName')), '2023-05-01').configuration.ingress.fqdn]"
+    },
+    "containerAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Nom del recurs Container App"
+      },
+      "value": "[parameters('projectName')]"
+    }
+  }
+}

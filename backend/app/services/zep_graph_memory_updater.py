@@ -357,7 +357,7 @@ class ZepGraphMemoryUpdater:
 
         self.add_activity(activity)
 
-    def _worker_loop(self, locale: str = 'zh'):
+    def _worker_loop(self, locale: str = 'en'):
         """Background worker loop — batch-sends activities to Zep per platform"""
         set_locale(locale)
         while self._running or not self._activity_queue.empty():

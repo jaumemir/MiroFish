@@ -62,68 +62,111 @@ def get_project(project_id: str):
 def get_project_detail(project_id: str):
     """
     Get aggregated project detail: project metadata, files, ontology, graph and simulations.
+    Simulations come from the DB (relational source of truth); operational data (rounds,
+    report_id, live status) is enriched from the filesystem.
     """
     from ..models.db_models import ProjectModel
     from ..db import get_session
+    from ..services.simulation_manager import SimulationManager
+    from ..services.simulation_runner import SimulationRunner
+    from ..api.simulation import _get_report_id_for_simulation
 
     with get_session() as db:
         project = db.get(ProjectModel, project_id)
         if not project:
             return jsonify({'error': t('api.projectNotFound', id=project_id)}), 404
 
-        # Ontologia activa (la més recent)
+        # Serialitzem tot dins de la sessió per evitar lazy-load fora de context
+        project_data = {
+            'id': project.id,
+            'name': project.name,
+            'status': project.status,
+            'simulation_requirement': project.simulation_requirement,
+            'created_at': project.created_at.isoformat() if project.created_at else None,
+        }
+        files_data = [{
+            'id': f.id,
+            'original_name': f.original_name,
+            'size': f.size,
+            'mime_type': f.mime_type,
+        } for f in project.files if f.file_type == 'upload']
+
         ontology = project.ontologies[-1] if project.ontologies else None
+        ontology_data = {
+            'id': ontology.id,
+            'version': ontology.version,
+            'created_at': ontology.created_at.isoformat() if ontology.created_at else None,
+        } if ontology else None
 
-        # Graph base actiu (el més recent)
         graph = project.graphs[-1] if project.graphs else None
+        graph_data = {
+            'id': graph.id,
+            'status': graph.status,
+            'node_count': graph.node_count,
+            'edge_count': graph.edge_count,
+            'backend': graph.backend,
+        } if graph else None
 
-        # Simulacions ordenades per data de creació desc
-        simulations = []
+        # Migració lazy: backfill de simulacions que existien al filesystem però no a la BD
+        SimulationManager().migrate_filesystem_simulations_to_db(project_id)
+        db.refresh(project)
+
+        # Simulacions de la BD (relació 1:N garantida), ordenades de més nova a més vella
+        # ordinal: 1 = la més nova
         sorted_sims = sorted(project.simulations, key=lambda s: s.created_at, reverse=True)
-        total = len(sorted_sims)
-        for i, sim in enumerate(sorted_sims, 1):
-            report = next(iter(sim.reports), None)
-            simulations.append({
-                'id': sim.id,
-                'ordinal': total - i + 1,
-                'status': sim.status,
-                'platform': sim.platform,
-                'rounds_total': sim.rounds_total,
-                'rounds_completed': sim.rounds_completed,
-                'graph_id': sim.graph_id,
-                'created_at': sim.created_at.isoformat() if sim.created_at else None,
-                'report_id': report.id if report else None,
-                'report_status': report.status if report else None,
-            })
+        db_sims = [{
+            'id': s.id,
+            'ordinal': i + 1,
+            'status': s.status,
+            'platform': s.platform,
+            'rounds_total': s.rounds_total,
+            'rounds_completed': s.rounds_completed,
+            'graph_id': s.graph_id,
+            'created_at': s.created_at.isoformat() if s.created_at else None,
+        } for i, s in enumerate(sorted_sims)]
 
-        return jsonify({
-            'project': {
-                'id': project.id,
-                'name': project.name,
-                'status': project.status,
-                'simulation_requirement': project.simulation_requirement,
-                'created_at': project.created_at.isoformat() if project.created_at else None,
-            },
-            'files': [{
-                'id': f.id,
-                'original_name': f.original_name,
-                'size': f.size,
-                'mime_type': f.mime_type,
-            } for f in project.files if f.file_type == 'upload'],
-            'ontology': {
-                'id': ontology.id,
-                'version': ontology.version,
-                'created_at': ontology.created_at.isoformat() if ontology.created_at else None,
-            } if ontology else None,
-            'graph': {
-                'id': graph.id,
-                'status': graph.status,
-                'node_count': graph.node_count,
-                'edge_count': graph.edge_count,
-                'backend': graph.backend,
-            } if graph else None,
-            'simulations': simulations,
-        }), 200
+    # Enriquim amb dades operacionals dels fitxers (rounds en curs, report_id, status viu)
+    manager = SimulationManager()
+    simulations = []
+    for sim in db_sims:
+        sim_id = sim['id']
+        run_state = SimulationRunner.get_run_state(sim_id)
+        if run_state:
+            sim['rounds_completed'] = run_state.current_round
+            if run_state.total_rounds > 0:
+                sim['rounds_total'] = run_state.total_rounds
+        # Status més actualitzat des del fitxer; reconcilia si el runner ja ha acabat
+        from ..services.simulation_manager import SimulationStatus
+        from ..services.simulation_runner import RunnerStatus
+        fs_state = manager.get_simulation(sim_id)
+        if fs_state:
+            if fs_state.status == SimulationStatus.RUNNING and run_state:
+                if run_state.runner_status == RunnerStatus.COMPLETED:
+                    fs_state.status = SimulationStatus.COMPLETED
+                    manager._save_simulation_state(fs_state)
+                elif run_state.runner_status in [RunnerStatus.STOPPED, RunnerStatus.STOPPING]:
+                    fs_state.status = SimulationStatus.PAUSED
+                    manager._save_simulation_state(fs_state)
+                elif run_state.runner_status == RunnerStatus.FAILED:
+                    fs_state.status = SimulationStatus.FAILED
+                    manager._save_simulation_state(fs_state)
+            sim['status'] = fs_state.status.value if hasattr(fs_state.status, 'value') else fs_state.status
+        report_id = _get_report_id_for_simulation(sim_id)
+        sim['report_id'] = report_id
+        # Si té informe i encara és PAUSED, el considerem COMPLETED
+        if report_id and fs_state and fs_state.status == SimulationStatus.PAUSED:
+            fs_state.status = SimulationStatus.COMPLETED
+            manager._save_simulation_state(fs_state)
+            sim['status'] = SimulationStatus.COMPLETED.value
+        simulations.append(sim)
+
+    return jsonify({
+        'project': project_data,
+        'files': files_data,
+        'ontology': ontology_data,
+        'graph': graph_data,
+        'simulations': simulations,
+    }), 200
 
 
 @graph_bp.route('/project/list', methods=['GET'])

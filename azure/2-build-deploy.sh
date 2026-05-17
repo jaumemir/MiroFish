@@ -43,8 +43,8 @@ if [[ "$GRAPH_BACKEND" == "graphiti" && -z "${NEO4J_PASSWORD:-}" ]]; then
   echo "ERROR: NEO4J_PASSWORD is required when GRAPH_BACKEND=graphiti"
   exit 1
 fi
-if [[ -z "${ACS_CONNECTION_STRING:-}" ]]; then
-  echo "AVÍS: ACS_CONNECTION_STRING no configurat — emails d'invitació es mostraran als logs"
+if [[ -z "${ACS_ENDPOINT:-}" || -z "${ACS_ACCESS_KEY:-}" ]]; then
+  echo "AVÍS: ACS_ENDPOINT / ACS_ACCESS_KEY no configurats — emails d'invitació es mostraran als logs"
 fi
 for var in "${REQUIRED_VARS[@]}"; do
   if [[ -z "${!var:-}" ]]; then
@@ -140,8 +140,10 @@ DEPLOY_OUTPUT=$(az deployment group create \
       jwtSecretKey="$JWT_SECRET_KEY" \
       adminEmail="$ADMIN_EMAIL" \
       adminPassword="$ADMIN_PASSWORD" \
-      acsConnectionString="${ACS_CONNECTION_STRING:-}" \
+      acsEndpoint="${ACS_ENDPOINT:-}" \
+      acsAccessKey="${ACS_ACCESS_KEY:-}" \
       acsSenderAddress="${ACS_SENDER_ADDRESS:-}" \
+      acsSenderDisplayName="${ACS_SENDER_DISPLAY_NAME:-MiroFish}" \
       acsInvitationTtlHours="${ACS_INVITATION_TTL_HOURS:-48}" \
       acsResetPasswordTtlHours="${ACS_RESET_PASSWORD_TTL_HOURS:-1}" \
       jwtAccessTokenExpires="${JWT_ACCESS_TOKEN_EXPIRES:-28800}" \

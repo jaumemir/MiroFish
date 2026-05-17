@@ -205,10 +205,7 @@ class SimulationRunner:
     """
 
     # Run state storage directory
-    RUN_STATE_DIR = os.path.join(
-        os.path.dirname(__file__),
-        '../../uploads/simulations'
-    )
+    RUN_STATE_DIR = Config.OASIS_SIMULATION_DATA_DIR
 
     # Scripts directory
     SCRIPTS_DIR = os.path.join(
@@ -236,6 +233,17 @@ class SimulationRunner:
         # Try to load from file
         state = cls._load_run_state(simulation_id)
         if state:
+            # Zombie detection: if state is RUNNING but no active process exists
+            # (e.g. after a container restart), mark it as STOPPED so the frontend
+            # can recover instead of polling forever.
+            if state.runner_status == RunnerStatus.RUNNING and simulation_id not in cls._processes:
+                state.runner_status = RunnerStatus.STOPPED
+                state.twitter_running = False
+                state.reddit_running = False
+                if not state.completed_at:
+                    state.completed_at = datetime.now().isoformat()
+                cls._save_run_state(state)
+                logger.info(f"Zombie simulation detected and marked STOPPED: {simulation_id}")
             cls._run_states[simulation_id] = state
         return state
 
@@ -480,7 +488,7 @@ class SimulationRunner:
         return state
 
     @classmethod
-    def _monitor_simulation(cls, simulation_id: str, locale: str = 'zh'):
+    def _monitor_simulation(cls, simulation_id: str, locale: str = 'en'):
         """Monitor the simulation process and parse action logs"""
         set_locale(locale)
         sim_dir = os.path.join(cls.RUN_STATE_DIR, simulation_id)
@@ -546,6 +554,21 @@ class SimulationRunner:
             state.twitter_running = False
             state.reddit_running = False
             cls._save_run_state(state)
+
+            # Sync final status back to SimulationManager so the project view reflects it
+            try:
+                from .simulation_manager import SimulationManager, SimulationStatus
+                mgr = SimulationManager()
+                sim_state = mgr.get_simulation(simulation_id)
+                if sim_state:
+                    if exit_code == 0:
+                        sim_state.status = SimulationStatus.COMPLETED
+                    else:
+                        sim_state.status = SimulationStatus.FAILED
+                    mgr._save_simulation_state(sim_state)
+                    logger.info(f"Updated simulation manager status to {sim_state.status.value}: {simulation_id}")
+            except Exception as sync_err:
+                logger.warning(f"Failed to sync simulation manager status: {simulation_id}, error={sync_err}")
 
         except Exception as e:
             logger.error(f"Monitor thread exception: {simulation_id}, error={str(e)}")
@@ -630,6 +653,14 @@ class SimulationRunner:
                                         state.reddit_completed = True
                                         state.reddit_running = False
                                         logger.info(f"Reddit simulation completed: {state.simulation_id}, total_rounds={action_data.get('total_rounds')}, total_actions={action_data.get('total_actions')}")
+                                # simulation_stopped = interrupted by signal/manual stop; not completed
+                                elif event_type == "simulation_stopped":
+                                    if platform == "twitter":
+                                        state.twitter_running = False
+                                        logger.info(f"Twitter simulation stopped: {state.simulation_id}, rounds_completed={action_data.get('rounds_completed')}")
+                                    elif platform == "reddit":
+                                        state.reddit_running = False
+                                        logger.info(f"Reddit simulation stopped: {state.simulation_id}, rounds_completed={action_data.get('rounds_completed')}")
 
                                     # Check if all enabled platforms have completed.
                                     # If only one platform is running, check only that one.
@@ -1241,23 +1272,19 @@ class SimulationRunner:
                         state.error = "Server shutdown; simulation was terminated"
                         cls._save_run_state(state)
 
-                    # Also update state.json to set status to stopped
+                    # Update simulation status to stopped via manager (syncs to DB)
                     try:
-                        sim_dir = os.path.join(cls.RUN_STATE_DIR, simulation_id)
-                        state_file = os.path.join(sim_dir, "state.json")
-                        logger.info(f"Updating state.json: {state_file}")
-                        if os.path.exists(state_file):
-                            with open(state_file, 'r', encoding='utf-8') as f:
-                                state_data = json.load(f)
-                            state_data['status'] = 'stopped'
-                            state_data['updated_at'] = datetime.now().isoformat()
-                            with open(state_file, 'w', encoding='utf-8') as f:
-                                json.dump(state_data, f, indent=2, ensure_ascii=False)
-                            logger.info(f"Updated state.json status to stopped: {simulation_id}")
+                        from .simulation_manager import SimulationManager, SimulationStatus
+                        mgr = SimulationManager()
+                        sim_state = mgr.get_simulation(simulation_id)
+                        if sim_state:
+                            sim_state.status = SimulationStatus.STOPPED
+                            mgr._save_simulation_state(sim_state)
+                            logger.info(f"Updated simulation status to stopped: {simulation_id}")
                         else:
-                            logger.warning(f"state.json not found: {state_file}")
+                            logger.warning(f"Simulation state not found for stopped update: {simulation_id}")
                     except Exception as state_err:
-                        logger.warning(f"Failed to update state.json: {simulation_id}, error={state_err}")
+                        logger.warning(f"Failed to update simulation status to stopped: {simulation_id}, error={state_err}")
 
             except Exception as e:
                 logger.error(f"Failed to clean up process: {simulation_id}, error={e}")

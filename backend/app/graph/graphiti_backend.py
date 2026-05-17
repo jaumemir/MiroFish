@@ -527,10 +527,12 @@ class GraphitiBackend(GraphBackend):
 
     async def clone_graph(self, src_group_id: str, dst_group_id: str) -> None:
         """Clone all nodes and relationships from src_group_id to dst_group_id."""
+        # Use apoc.create.node to preserve Neo4j labels (labels are not part of properties(n))
         clone_nodes_query = """
             MATCH (n) WHERE n.group_id = $src
-            WITH n, properties(n) AS props
-            CREATE (m) SET m = props SET m.group_id = $dst
+            WITH n, properties(n) AS props, labels(n) AS lbls
+            CALL apoc.create.node(lbls, apoc.map.merge(props, {group_id: $dst})) YIELD node
+            RETURN node
         """
         await self._execute_neo4j_query(clone_nodes_query, {"src": src_group_id, "dst": dst_group_id})
 
@@ -544,6 +546,9 @@ class GraphitiBackend(GraphBackend):
             RETURN rel
         """
         await self._execute_neo4j_query(clone_rels_query, {"src": src_group_id, "dst": dst_group_id})
+
+    def clone_graph_sync(self, src_group_id: str, dst_group_id: str) -> None:
+        _run_async(self.clone_graph(src_group_id, dst_group_id))
 
     def delete_graph(self, graph_id: str) -> None:
         """Delete all nodes and relationships for a given group_id."""

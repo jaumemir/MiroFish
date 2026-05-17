@@ -99,7 +99,7 @@ class GraphBuilderService:
         chunk_size: int,
         chunk_overlap: int,
         batch_size: int,
-        locale: str = 'zh'
+        locale: str = 'en'
     ):
         """Graph build worker thread"""
         set_locale(locale)

@@ -1,16 +1,11 @@
 <template>
   <div class="project-detail-layout">
-    <!-- NAV -->
-    <header class="app-header">
-      <div class="header-left">
-        <div class="brand" @click="router.push({ name: 'Home' })">MIROFISH</div>
-        <span class="header-back-label" @click="router.push({ name: 'Home' })">← {{ t('projectDetail.backToHome') }}</span>
-      </div>
-      <div class="header-right">
-        <button class="help-btn" @click="openHelp('overview')" :title="$t('help.buttonTitle')">?</button>
-        <LanguageSwitcher />
-      </div>
-    </header>
+    <AppHeader
+      helpKey="overview"
+      :backLabel="$t('projectDetail.backToHome')"
+      @brand-click="router.push({ name: 'Home' })"
+      @back-click="router.push({ name: 'Home' })"
+    />
 
     <div class="pd-body" v-if="detail">
       <!-- COLUMNA ESQUERRA -->
@@ -142,8 +137,8 @@
           </div>
 
           <div class="pd-sim-card-actions">
-            <!-- Completada / profiles_ready / config_ready -->
-            <template v-if="['completed', 'profiles_ready', 'config_ready'].includes(sim.status)">
+            <!-- Completada / aturada / en pausa / profiles_ready / config_ready -->
+            <template v-if="['completed', 'stopped', 'paused', 'profiles_ready', 'config_ready'].includes(sim.status)">
               <button class="pd-btn-sm" @click="handleAdjust(sim)">✏️ {{ t('projectDetail.adjust') }}</button>
               <button class="pd-btn-sm" @click="handleRegenerateReport(sim)">↺ {{ t('projectDetail.regenerateReport') }}</button>
               <button v-if="sim.report_id" class="pd-btn-sm pd-btn-interaction" @click="handleInteraction(sim)">
@@ -156,17 +151,19 @@
 
             <!-- En curs -->
             <template v-else-if="sim.status === 'running'">
-              <span class="pd-running-indicator">⟳ {{ sim.rounds_completed }}/{{ sim.rounds_total }}</span>
+              <button class="pd-btn-sm" @click="handleViewRunning(sim)">▶ {{ t('projectDetail.viewRunning') }}</button>
+              <span class="pd-running-indicator">⟳ {{ sim.rounds_completed }}/{{ sim.rounds_total ?? '?' }}</span>
             </template>
 
             <!-- Error / failed -->
             <template v-else-if="['error', 'failed'].includes(sim.status)">
               <button class="pd-btn-sm" @click="handleAdjust(sim)">✏️ {{ t('projectDetail.adjust') }}</button>
+              <button class="pd-btn-sm" @click="handleDownloadLog(sim)">{{ t('projectDetail.downloadLog') }}</button>
             </template>
 
-            <!-- Prepared -->
-            <template v-else-if="sim.status === 'prepared'">
-              <button class="pd-btn-sm" @click="handleAdjust(sim)">✏️ {{ t('projectDetail.adjust') }}</button>
+            <!-- En configuració / llesta per executar -->
+            <template v-else-if="['ready', 'created', 'preparing', 'configuring', 'prepared'].includes(sim.status)">
+              <button class="pd-btn-sm" @click="handleContinue(sim)">▶ {{ t('projectDetail.continueSimulation') }}</button>
             </template>
 
             <button class="pd-btn-sm pd-btn-danger" @click="handleDeleteSimulation(sim)">
@@ -186,9 +183,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import AppHeader from '@/components/AppHeader.vue'
 import { getGraphData } from '@/api/graph'
-import { useHelp } from '@/composables/useHelp'
 import {
   getProjectDetail,
   downloadProjectSource,
@@ -204,7 +200,6 @@ import {
 const props = defineProps({ projectId: String })
 const router = useRouter()
 const { t } = useI18n()
-const { openHelp } = useHelp()
 
 const detail = ref(null)
 const loading = ref(true)
@@ -338,6 +333,30 @@ function handleAdjust(sim) {
   })
 }
 
+function handleContinue(sim) {
+  if (sim.status === 'paused') {
+    router.push({
+      name: 'SimulationRun',
+      params: { simulationId: sim.id },
+      state: { backTo: `/project/${props.projectId}` },
+    })
+  } else {
+    router.push({
+      name: 'Simulation',
+      params: { simulationId: sim.id },
+      state: { backTo: `/project/${props.projectId}` },
+    })
+  }
+}
+
+function handleViewRunning(sim) {
+  router.push({
+    name: 'SimulationRun',
+    params: { simulationId: sim.id },
+    state: { backTo: `/project/${props.projectId}` },
+  })
+}
+
 function handleRegenerateReport(sim) {
   router.push({
     name: 'Report',
@@ -392,14 +411,20 @@ async function handleDownloadLog(sim) {
 function statusBadgeClass(status) {
   const map = {
     completed: 'pd-badge--ready',
+    stopped: 'pd-badge--ready',
     profiles_ready: 'pd-badge--ready',
     config_ready: 'pd-badge--ready',
     running: 'pd-badge--building',
+    paused: 'pd-badge--prepared',
     error: 'pd-badge--failed',
     failed: 'pd-badge--failed',
     prepared: 'pd-badge--prepared',
+    ready: 'pd-badge--prepared',
+    created: 'pd-badge--prepared',
+    preparing: 'pd-badge--building',
+    configuring: 'pd-badge--building',
   }
-  return map[status] || ''
+  return map[status] || 'pd-badge--prepared'
 }
 
 function capitalize(str) {
@@ -413,16 +438,6 @@ onMounted(loadDetail)
 <style scoped>
 /* Layout */
 .project-detail-layout { display: flex; flex-direction: column; height: 100vh; background: #fff; color: #000; font-family: 'JetBrains Mono', monospace; }
-/* Header */
-.app-header { height: 60px; border-bottom: 1px solid #eaeaea; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: #fff; flex-shrink: 0; }
-.header-left { display: flex; align-items: center; gap: 16px; }
-.brand { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 18px; letter-spacing: 1px; cursor: pointer; color: #000; }
-.brand:hover { color: #ff4500; }
-.header-back-label { font-size: 0.75rem; color: #999; cursor: pointer; }
-.header-back-label:hover { color: #000; }
-.header-right { display: flex; align-items: center; gap: 16px; }
-.help-btn { background: none; border: 1px solid #ccc; color: #333; width: 28px; height: 28px; font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: border-color 0.15s; }
-.help-btn:hover { border-color: #000; }
 /* Body */
 .pd-body { display: flex; flex: 1; overflow: hidden; }
 .pd-sidebar { width: 340px; min-width: 260px; border-right: 1px solid #eaeaea; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; background: #fafafa; }
@@ -468,8 +483,9 @@ onMounted(loadDetail)
 .pd-sim-empty { color: #aaa; font-size: 0.82rem; text-align: center; padding: 3rem 0; border-top: 1px solid #e5e5e5; }
 /* Simulation cards */
 .pd-sim-card { border: 1px solid #e5e5e5; border-radius: 4px; padding: 0.9rem; margin-bottom: 0.65rem; background: #fff; }
-.pd-sim-card--completed, .pd-sim-card--profiles_ready, .pd-sim-card--config_ready { border-left: 3px solid #22c55e; }
+.pd-sim-card--completed, .pd-sim-card--stopped, .pd-sim-card--profiles_ready, .pd-sim-card--config_ready { border-left: 3px solid #22c55e; }
 .pd-sim-card--running { border-left: 3px solid #ff8c00; }
+.pd-sim-card--paused { border-left: 3px solid #a3a3a3; }
 .pd-sim-card--error, .pd-sim-card--failed { border-left: 3px solid #ef4444; }
 .pd-sim-card-header { margin-bottom: 0.6rem; }
 .pd-sim-card-title { font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }

@@ -33,9 +33,12 @@ ADMIN_EMAIL="admin@example.com"
 ADMIN_PASSWORD="<contrasenya-segura>"
 
 # ── Azure Communication Services (emails d'invitació i reset) ────────────────
-# ACS és opcional en dev: els links apareixeran als logs si ACS_CONNECTION_STRING és buit
-ACS_CONNECTION_STRING=""
-ACS_SENDER_ADDRESS="donotreply@example.com"
+# ACS és opcional en dev: els links apareixeran als logs si ACS_ENDPOINT és buit
+# Endpoint i clau: Azure Portal > Communication Services > Keys
+ACS_ENDPOINT="https://<resource>.communication.azure.com"
+ACS_ACCESS_KEY="<base64-access-key-from-azure-portal>"
+ACS_SENDER_ADDRESS="DoNotReply@<uuid>.azurecomm.net"
+ACS_SENDER_DISPLAY_NAME="MiroFish"
 ACS_INVITATION_TTL_HOURS=48
 ACS_RESET_PASSWORD_TTL_HOURS=1
 

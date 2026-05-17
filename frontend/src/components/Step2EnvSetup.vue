@@ -1,15 +1,6 @@
 <template>
   <div class="env-setup-panel">
     <div class="scroll-container" style="position: relative;">
-      <!-- Adjust mode banner -->
-      <div v-if="props.adjustMode && !editingSection" class="adjust-banner">
-        📋 {{ $t('adjust.readOnlyMode') }} —
-        <button class="adjust-edit-btn" @click="editingSection = true">
-          ✏️ {{ $t('adjust.editSection') }}
-        </button>
-      </div>
-      <!-- Read-only overlay in adjust mode -->
-      <div v-if="props.adjustMode && !editingSection" class="adjust-overlay"></div>
       <!-- Step 01: 模拟实例 -->
       <div class="step-card" :class="{ 'active': phase === 0, 'completed': phase > 0 }">
         <div class="card-header">
@@ -127,9 +118,8 @@
               <div
                 v-for="(profile, idx) in profiles"
                 :key="idx"
-                class="profile-card"
-                :class="{ 'profile-card--clickable': currentPhase === 'phase_a' || currentPhase === 'generating' }"
-                @click="(currentPhase === 'phase_a' || currentPhase === 'generating') ? openAgentModal(profile) : selectProfile(profile)"
+                class="profile-card profile-card--clickable"
+                @click="openAgentModal(profile)"
               >
                 <div class="profile-header">
                   <span class="profile-realname">{{ profile.username || 'Unknown' }}</span>
@@ -633,44 +623,113 @@
       </div>
     </div>
 
-    <!-- Agent edit/regen modal -->
+    <!-- Agent modal: view / edit / regen -->
     <div v-if="agentModalOpen" class="agent-modal-overlay" @click.self="closeAgentModal">
-      <div class="agent-modal">
+      <div class="profile-modal">
         <div class="modal-header">
-          <span class="modal-title">{{ selectedAgent?.name || selectedAgent?.username }}</span>
-          <span v-if="selectedAgent?.manually_edited" class="edited-badge">{{ $t('step2.manuallyEditedBadge') }}</span>
-          <button class="modal-close" @click="closeAgentModal">✕</button>
+          <div class="modal-header-info">
+            <div class="modal-name-row">
+              <span class="modal-realname">{{ selectedAgent?.username || selectedAgent?.name }}</span>
+              <span class="modal-username">@{{ selectedAgent?.name }}</span>
+              <span v-if="selectedAgent?.manually_edited" class="edited-badge">{{ $t('step2.manuallyEditedBadge') }}</span>
+            </div>
+            <span class="modal-profession">{{ selectedAgent?.profession }}</span>
+          </div>
+          <button class="close-btn" @click="closeAgentModal">×</button>
         </div>
 
-        <div v-if="agentModalMode === 'edit'" class="modal-body">
-          <div class="field-group" v-for="field in ['name', 'bio', 'persona', 'age', 'gender', 'mbti', 'country', 'profession', 'stance']" :key="field">
-            <label>{{ $t('step2.agentField_' + field) }}</label>
-            <textarea v-if="['bio', 'persona'].includes(field)" v-model="editForm[field]" rows="3" />
-            <input v-else v-model="editForm[field]" />
+        <div class="modal-body">
+
+          <!-- Basic info grid -->
+          <div class="modal-info-grid">
+            <div class="info-item">
+              <span class="info-label">{{ $t('step2.profileModalAge') }}</span>
+              <input v-if="agentModalMode === 'edit'" class="inline-input" type="number" v-model.number="editForm.age" />
+              <span v-else class="info-value">{{ selectedAgent?.age || '-' }} {{ $t('step2.yearsOld') }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">{{ $t('step2.profileModalGender') }}</span>
+              <select v-if="agentModalMode === 'edit'" class="inline-select" v-model="editForm.gender">
+                <option value="male">{{ $t('step2.genderMale') }}</option>
+                <option value="female">{{ $t('step2.genderFemale') }}</option>
+                <option value="other">{{ $t('step2.genderOther') }}</option>
+              </select>
+              <span v-else class="info-value">{{ { male: $t('step2.genderMale'), female: $t('step2.genderFemale'), other: $t('step2.genderOther') }[selectedAgent?.gender] || selectedAgent?.gender }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">{{ $t('step2.profileModalCountry') }}</span>
+              <template v-if="agentModalMode === 'edit'">
+                <input class="inline-input" list="country-list" v-model="editForm.country" />
+                <datalist id="country-list">
+                  <option v-for="c in COUNTRY_OPTIONS" :key="c" :value="c" />
+                </datalist>
+              </template>
+              <span v-else class="info-value">{{ selectedAgent?.country || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">{{ $t('step2.profileModalMbti') }}</span>
+              <select v-if="agentModalMode === 'edit'" class="inline-select" v-model="editForm.mbti">
+                <option v-for="m in MBTI_OPTIONS" :key="m" :value="m">{{ m }}</option>
+              </select>
+              <span v-else class="info-value mbti">{{ selectedAgent?.mbti || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">{{ $t('step2.agentField_stance') }}</span>
+              <select v-if="agentModalMode === 'edit'" class="inline-select" v-model="editForm.stance">
+                <option value="supportive">{{ $t('step2.stanceSupportive') }}</option>
+                <option value="opposing">{{ $t('step2.stanceOpposing') }}</option>
+                <option value="neutral">{{ $t('step2.stanceNeutral') }}</option>
+                <option value="observer">{{ $t('step2.stanceObserver') }}</option>
+              </select>
+              <span v-else class="info-value">{{ { supportive: $t('step2.stanceSupportive'), opposing: $t('step2.stanceOpposing'), neutral: $t('step2.stanceNeutral'), observer: $t('step2.stanceObserver') }[selectedAgent?.stance] || selectedAgent?.stance || '-' }}</span>
+            </div>
           </div>
-          <div class="modal-actions">
-            <button class="btn-secondary" @click="closeAgentModal">{{ $t('common.cancel') }}</button>
-            <button class="btn-primary" :disabled="editLoading" @click="saveAgent">{{ $t('common.save') }}</button>
+
+          <!-- Bio -->
+          <div class="modal-section">
+            <span class="section-label">{{ $t('step2.profileModalBio') }}</span>
+            <p class="section-bio">{{ selectedAgent?.bio || $t('step2.noBio') }}</p>
           </div>
+
+          <!-- Topics -->
+          <div class="modal-section" v-if="selectedAgent?.interested_topics?.length">
+            <span class="section-label">{{ $t('step2.profileModalTopics') }}</span>
+            <div class="topics-grid">
+              <span v-for="topic in selectedAgent.interested_topics" :key="topic" class="topic-item">{{ topic }}</span>
+            </div>
+          </div>
+
+          <!-- Persona -->
+          <div class="modal-section" v-if="selectedAgent?.persona">
+            <span class="section-label">{{ $t('step2.profileModalPersona') }}</span>
+            <p class="section-persona">{{ selectedAgent?.persona }}</p>
+          </div>
+
+          <!-- Edit mode: free instructions box -->
+          <div v-if="agentModalMode === 'edit'" class="modal-section">
+            <span class="section-label">{{ $t('step2.extraInstructionsLabel') }}</span>
+            <p class="edit-hint">{{ $t('step2.editGuidanceHint') }}</p>
+            <textarea class="regen-textarea" v-model="regenInstructions" rows="3" :placeholder="$t('step2.extraInstructions')" />
+          </div>
+
         </div>
 
-        <div v-else-if="agentModalMode === 'regen'" class="modal-body">
-          <p>{{ $t('step2.regenerateAgentHint') }}</p>
-          <textarea v-model="regenInstructions" rows="3" :placeholder="$t('step2.extraInstructions')" />
-          <div class="modal-actions">
-            <button class="btn-secondary" @click="closeAgentModal">{{ $t('common.cancel') }}</button>
-            <button class="btn-primary" :disabled="regenLoading" @click="doRegenerate">{{ $t('step2.regenerateAgent') }}</button>
-          </div>
-        </div>
-
-        <div v-else class="modal-body modal-view">
-          <p><strong>Bio:</strong> {{ selectedAgent?.bio }}</p>
-          <p><strong>Persona:</strong> {{ selectedAgent?.persona }}</p>
-          <div class="modal-actions">
-            <button class="btn-secondary" @click="agentModalMode = 'regen'">{{ $t('step2.regenerateAgent') }}</button>
+        <!-- Actions: fixed footer always visible -->
+        <div class="modal-footer">
+          <template v-if="agentModalMode === 'done'">
+            <button class="btn-primary" @click="closeAgentModal">{{ $t('common.accept') }}</button>
+          </template>
+          <template v-else-if="agentModalMode === 'edit'">
+            <button class="btn-secondary" @click="agentModalMode = 'view'">{{ $t('common.cancel') }}</button>
+            <button class="btn-primary" :disabled="regenLoading" @click="doRegenerateFromEdit">
+              <span v-if="regenLoading">{{ $t('step2.regeneratingAgent') }}</span>
+              <span v-else>{{ $t('step2.regenerateAgent') }}</span>
+            </button>
+          </template>
+          <template v-else>
             <button class="btn-danger" @click="confirmDeleteAgent(selectedAgent)">{{ $t('step2.deleteAgent') }}</button>
             <button class="btn-primary" @click="agentModalMode = 'edit'">{{ $t('step2.editAgent') }}</button>
-          </div>
+          </template>
         </div>
       </div>
     </div>
@@ -1303,9 +1362,23 @@ const pollTaskUntilDone = async (taskId, onComplete, intervalMs = 2000) => {
   })
 }
 
-const openAgentModal = (agent, mode = 'view') => {
+const MBTI_OPTIONS = [
+  'INTJ','INTP','ENTJ','ENTP',
+  'INFJ','INFP','ENFJ','ENFP',
+  'ISTJ','ISFJ','ESTJ','ESFJ',
+  'ISTP','ISFP','ESTP','ESFP',
+]
+
+const COUNTRY_OPTIONS = [
+  'China','US','UK','Japan','Germany','France',
+  'Canada','Australia','Brazil','India','South Korea',
+  'Spain','Italy','Mexico','Argentina','Netherlands',
+  'Sweden','Norway','Poland','Turkey','Saudi Arabia',
+]
+
+const openAgentModal = (agent) => {
   selectedAgent.value = agent
-  agentModalMode.value = mode
+  agentModalMode.value = 'view'
   editForm.value = { ...agent }
   regenInstructions.value = ''
   agentModalOpen.value = true
@@ -1321,11 +1394,11 @@ const saveAgent = async () => {
   editLoading.value = true
   try {
     const res = await patchAgent(props.simulationId, selectedAgent.value.user_id, editForm.value)
-    // axios interceptor: res = { success, data: updatedProfile }
     if (res.success) {
       const idx = profiles.value.findIndex(p => p.user_id === selectedAgent.value.user_id)
       if (idx !== -1) profiles.value[idx] = res.data
-      closeAgentModal()
+      selectedAgent.value = res.data
+      agentModalMode.value = 'view'
     }
   } finally {
     editLoading.value = false
@@ -1355,6 +1428,21 @@ const confirmDeleteAgent = async (agent) => {
   }
 }
 
+const doRegenerateFromEdit = async () => {
+  const a = selectedAgent.value
+  const f = editForm.value
+  const lines = []
+  if (f.stance   && f.stance   !== a.stance)    lines.push(`- Stance: ${f.stance}`)
+  if (f.age      && f.age      !== a.age)        lines.push(`- Age: ${f.age}`)
+  if (f.gender   && f.gender   !== a.gender)     lines.push(`- Gender: ${f.gender}`)
+  if (f.mbti     && f.mbti     !== a.mbti)       lines.push(`- MBTI: ${f.mbti}`)
+  if (f.country  && f.country  !== a.country)    lines.push(`- Country: ${f.country}`)
+  if (f.profession && f.profession !== a.profession) lines.push(`- Profession: ${f.profession}`)
+  if (regenInstructions.value) lines.push(regenInstructions.value)
+  regenInstructions.value = lines.join('\n')
+  await doRegenerate()
+}
+
 const doRegenerate = async () => {
   if (!selectedAgent.value) return
   regenLoading.value = true
@@ -1362,11 +1450,19 @@ const doRegenerate = async () => {
     const res = await regenerateAgent(props.simulationId, selectedAgent.value.user_id, {
       extra_instructions: regenInstructions.value
     })
-    // res = { success, data: { task_id } }
     if (res.success) {
       await pollTaskUntilDone(res.data?.task_id, () => {})
       await fetchProfilesRealtime()
-      closeAgentModal()
+      // Find the updated agent and show it in view mode for confirmation
+      const updated = profiles.value.find(p => p.user_id === selectedAgent.value.user_id)
+      if (updated) {
+        selectedAgent.value = updated
+        editForm.value = { ...updated }
+      }
+      regenInstructions.value = ''
+      agentModalMode.value = 'done'
+    } else {
+      addLog(`Regenerate failed: ${res.error || 'unknown error'}`)
     }
   } finally {
     regenLoading.value = false
@@ -1478,6 +1574,9 @@ onMounted(async () => {
         addLog(t('log.loadedAgentProfiles', { count: profiles.value.length }))
         currentPhase.value = 'phase_a'
         emit('update-status', 'profiles_ready')
+      } else if (props.adjustMode) {
+        // Adjust mode: simulation already prepared — load existing data without re-triggering /prepare
+        await loadPreparedData()
       } else {
         // Any other non-created status: let startPrepareSimulation detect already_prepared
         startPrepareSimulation()
@@ -1766,7 +1865,7 @@ onUnmounted(() => {
 
 .profiles-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   max-height: 320px;
   overflow-y: auto;
@@ -1816,12 +1915,21 @@ onUnmounted(() => {
   font-size: 14px;
   font-weight: 700;
   color: #000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .profile-username {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: #999;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .profile-meta {
@@ -2290,7 +2398,7 @@ onUnmounted(() => {
   width: 90%;
   max-width: 600px;
   max-height: 85vh;
-  overflow: hidden;
+  overflow: hidden;  /* header+footer no fan scroll; el body sí */
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -2300,9 +2408,10 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 24px;
+  padding: 16px 24px;
   background: #FFF;
   border-bottom: 1px solid #F0F0F0;
+  flex-shrink: 0;
 }
 
 .modal-header-info {
@@ -2317,9 +2426,10 @@ onUnmounted(() => {
 }
 
 .modal-realname {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   color: #000;
+  word-break: break-word;
 }
 
 .modal-username {
@@ -2336,6 +2446,7 @@ onUnmounted(() => {
   border-radius: 4px;
   display: inline-block;
   font-weight: 500;
+  word-break: break-word;
 }
 
 .close-btn {
@@ -2363,6 +2474,7 @@ onUnmounted(() => {
   padding: 24px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 /* 基本信息网格 */
@@ -2510,6 +2622,7 @@ onUnmounted(() => {
   margin: 0;
   text-align: justify;
 }
+
 
 /* System Logs */
 .system-logs {
@@ -3154,8 +3267,36 @@ onUnmounted(() => {
 }
 
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid #F0F0F0;
+  background: #FFF;
+  border-radius: 0 0 16px 16px;
+  flex-shrink: 0;
+}
 .btn-primary { padding: 8px 16px; background: #000; color: #FFF; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
 .btn-secondary { padding: 8px 16px; background: #F5F5F5; color: #333; border: 1px solid #DDD; border-radius: 6px; cursor: pointer; font-weight: 600; }
 .btn-danger { padding: 8px 16px; background: #FFF; color: #D32F2F; border: 1px solid #FFCDD2; border-radius: 6px; cursor: pointer; font-weight: 600; }
 .btn-primary:disabled, .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.edit-hint {
+  font-size: 11px; color: #888; margin: 4px 0 8px; line-height: 1.4;
+}
+
+.regen-textarea {
+  width: 100%; padding: 8px 12px; border: 1px solid #E0E0E0;
+  border-radius: 6px; font-size: 13px; resize: vertical;
+  box-sizing: border-box; font-family: inherit;
+}
+
+.inline-select {
+  width: 100%; padding: 6px 10px; border: 1px solid #E0E0E0;
+  border-radius: 6px; font-size: 13px; background: #FFF;
+  box-sizing: border-box; cursor: pointer;
+}
+.inline-select:focus { outline: none; border-color: #999; }
 </style>

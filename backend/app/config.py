@@ -129,8 +129,10 @@ class Config:
     ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
 
     # Azure Communication Services
-    ACS_CONNECTION_STRING = os.environ.get('ACS_CONNECTION_STRING', '')
+    ACS_ENDPOINT = os.environ.get('ACS_ENDPOINT', '')
+    ACS_ACCESS_KEY = os.environ.get('ACS_ACCESS_KEY', '')
     ACS_SENDER_ADDRESS = os.environ.get('ACS_SENDER_ADDRESS', 'donotreply@mirofish.local')
+    ACS_SENDER_DISPLAY_NAME = os.environ.get('ACS_SENDER_DISPLAY_NAME', 'MiroFish')
     ACS_INVITATION_TTL_HOURS = int(os.environ.get('ACS_INVITATION_TTL_HOURS', '48'))
     ACS_RESET_PASSWORD_TTL_HOURS = int(os.environ.get('ACS_RESET_PASSWORD_TTL_HOURS', '1'))
 

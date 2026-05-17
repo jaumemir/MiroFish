@@ -4,28 +4,29 @@ export async function getProjectDetail(projectId) {
   return await service.get(`/api/graph/project/${projectId}/detail`)
 }
 
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 export async function downloadProjectSource(projectId, filename) {
   const res = await service.get(`/api/graph/project/${projectId}/download/source`, {
     responseType: 'blob',
   })
-  const url = URL.createObjectURL(res.data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename || 'source'
-  a.click()
-  URL.revokeObjectURL(url)
+  triggerDownload(res, filename || 'source')
 }
 
 export async function downloadProjectOntology(projectId, version) {
   const res = await service.get(`/api/graph/project/${projectId}/ontology/download`, {
     responseType: 'blob',
   })
-  const url = URL.createObjectURL(res.data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `ontology_v${version || 1}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  triggerDownload(res, `ontology_v${version || 1}.json`)
 }
 
 export async function uploadOntology(projectId, file) {
@@ -48,12 +49,7 @@ export async function downloadReportMd(reportId) {
     params: { format: 'md' },
     responseType: 'blob',
   })
-  const url = URL.createObjectURL(res.data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `report_${reportId}.md`
-  a.click()
-  URL.revokeObjectURL(url)
+  triggerDownload(res, `report_${reportId}.md`)
 }
 
 export async function downloadReportPdf(reportId) {
@@ -61,24 +57,14 @@ export async function downloadReportPdf(reportId) {
     params: { format: 'pdf' },
     responseType: 'blob',
   })
-  const url = URL.createObjectURL(res.data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `report_${reportId}.pdf`
-  a.click()
-  URL.revokeObjectURL(url)
+  triggerDownload(res, `report_${reportId}.pdf`)
 }
 
 export async function downloadSimulationLog(simulationId) {
   const res = await service.get(`/api/simulation/${simulationId}/download/log`, {
     responseType: 'blob',
   })
-  const url = URL.createObjectURL(res.data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `simulation_${simulationId}_log.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  triggerDownload(res, `simulation_${simulationId}_log.json`)
 }
 
 export async function getSimulationDetail(simulationId) {

@@ -903,7 +903,7 @@ Return JSON format (no markdown):
                 response_delay_min=cfg.get("response_delay_min", 5),
                 response_delay_max=cfg.get("response_delay_max", 60),
                 sentiment_bias=cfg.get("sentiment_bias", 0.0),
-                stance=cfg.get("stance", "neutral"),
+                stance=entity.attributes.get("stance") or cfg.get("stance", "neutral"),
                 influence_weight=cfg.get("influence_weight", 1.0)
             )
             configs.append(config)

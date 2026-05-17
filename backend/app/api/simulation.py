@@ -370,11 +370,10 @@ def _check_simulation_prepared(simulation_id: str) -> tuple:
             # If status is "preparing" but files are done, auto-update status to "ready"
             if status == "preparing":
                 try:
-                    state_data["status"] = "ready"
-                    from datetime import datetime
-                    state_data["updated_at"] = datetime.now().isoformat()
-                    with open(state_file, 'w', encoding='utf-8') as f:
-                        json.dump(state_data, f, ensure_ascii=False, indent=2)
+                    state = SimulationManager().get_simulation(simulation_id)
+                    if state:
+                        state.status = SimulationStatus.READY
+                        SimulationManager()._save_simulation_state(state)
                     logger.info(f"Auto-updated simulation status: {simulation_id} preparing -> ready")
                     status = "ready"
                 except Exception as e:
@@ -839,19 +838,33 @@ def get_simulation(simulation_id: str):
     try:
         manager = SimulationManager()
         state = manager.get_simulation(simulation_id)
-        
+
         if not state:
             return jsonify({
                 "success": False,
                 "error": t('api.simulationNotFound', id=simulation_id)
             }), 404
-        
+
+        # Reconcile: if manager thinks it's running but the runner has already finished, sync the status
+        if state.status == SimulationStatus.RUNNING:
+            run_state = SimulationRunner.get_run_state(simulation_id)
+            if run_state:
+                if run_state.runner_status == RunnerStatus.COMPLETED:
+                    state.status = SimulationStatus.COMPLETED
+                    manager._save_simulation_state(state)
+                elif run_state.runner_status in [RunnerStatus.STOPPED, RunnerStatus.STOPPING]:
+                    state.status = SimulationStatus.PAUSED
+                    manager._save_simulation_state(state)
+                elif run_state.runner_status == RunnerStatus.FAILED:
+                    state.status = SimulationStatus.FAILED
+                    manager._save_simulation_state(state)
+
         result = state.to_dict()
-        
+
         # If simulation is ready, attach run instructions
         if state.status == SimulationStatus.READY:
             result["run_instructions"] = manager.get_run_instructions(simulation_id)
-        
+
         return jsonify({
             "success": True,
             "data": result
@@ -939,18 +952,28 @@ def get_simulation_detail(simulation_id: str):
 
 @simulation_bp.route('/<simulation_id>', methods=['DELETE'])
 def delete_simulation(simulation_id: str):
-    """Delete a simulation and its data directory."""
+    """Delete a simulation from the DB and its data directory."""
     try:
         import shutil
-        manager = SimulationManager()
-        state = manager.get_simulation(simulation_id)
-        if not state:
-            return jsonify({"success": False, "error": t('api.simulationNotFound', id=simulation_id)}), 404
+        from ..models.db_models import SimulationModel
+        from ..db import get_session
 
-        sim_dir = manager._get_simulation_dir(simulation_id)
-        # Remove in-memory cache entry
+        # Check existence in DB (source of truth since fase3)
+        with get_session() as db:
+            sim_model = db.get(SimulationModel, simulation_id)
+            if not sim_model:
+                # Fall back to filesystem check for legacy simulations
+                manager = SimulationManager()
+                if not manager.get_simulation(simulation_id):
+                    return jsonify({"success": False, "error": t('api.simulationNotFound', id=simulation_id)}), 404
+            else:
+                db.delete(sim_model)
+                db.commit()
+
+        # Remove filesystem data regardless of DB presence
+        manager = SimulationManager()
         manager._simulations.pop(simulation_id, None)
-        # Remove data directory if it exists
+        sim_dir = manager._get_simulation_dir(simulation_id)
         if os.path.isdir(sim_dir):
             shutil.rmtree(sim_dir, ignore_errors=True)
 
@@ -3029,25 +3052,47 @@ def generate_config_endpoint(simulation_id: str):
                     profiles = _json.load(f)
 
                 from ..services.zep_entity_reader import ZepEntityReader, EntityNode
+
+                # Build a lookup of profile fields (including manually edited ones)
+                # keyed by source_entity_uuid so they can override graph data.
+                profile_overrides = {}
+                for p in profiles:
+                    uuid_ = p.get("source_entity_uuid")
+                    if uuid_:
+                        profile_overrides[uuid_] = {
+                            "stance": p.get("stance"),
+                            "age": p.get("age"),
+                            "gender": p.get("gender"),
+                            "country": p.get("country"),
+                            "profession": p.get("profession"),
+                            "mbti": p.get("mbti"),
+                        }
+
                 entity_nodes = []
                 reader = ZepEntityReader()
                 for p in profiles:
                     uuid_ = p.get("source_entity_uuid")
+                    entity = None
                     if uuid_:
                         try:
                             entity = reader.get_entity_with_context(state.graph_id, uuid_)
                             if entity:
-                                entity_nodes.append(entity)
-                        except Exception:
-                            pass
+                                # Apply profile overrides so manually edited fields win
+                                overrides = profile_overrides.get(uuid_, {})
+                                for k, v in overrides.items():
+                                    if v is not None:
+                                        entity.attributes[k] = v
+                        except Exception as e:
+                            logger.warning(f"Zep lookup failed for uuid={uuid_}: {e}")
 
-                # If Zep lookup yielded nothing, synthesize minimal EntityNodes from profiles
-                # so the config generator can still produce per-agent configs.
-                if not entity_nodes:
-                    for p in profiles:
+                    # Per-agent fallback: if Zep lookup failed or returned nothing,
+                    # synthesize a minimal EntityNode directly from the profile so that
+                    # every agent is represented in the config generation pass.
+                    if not entity:
                         user_id = p.get("user_id", 0)
-                        entity_nodes.append(EntityNode(
-                            uuid=p.get("source_entity_uuid") or f"profile_{user_id}",
+                        fallback_uuid = uuid_ or f"profile_{user_id}"
+                        entity = EntityNode(
+                            uuid=fallback_uuid,
                             name=p.get("name") or p.get("username") or f"agent_{user_id}",
                             labels=[p.get("profession") or "Person"],
                             summary=p.get("bio") or "",
@@ -3059,7 +3104,10 @@ def generate_config_endpoint(simulation_id: str):
                                 "mbti": p.get("mbti"),
                                 "stance": p.get("stance"),
                             },
-                        ))
+                        )
+                        logger.info(f"Using profile fallback for agent user_id={user_id} ({entity.name})")
+
+                    entity_nodes.append(entity)
 
                 gen = SimulationConfigGenerator()
                 params = gen.generate_config(
@@ -3292,7 +3340,13 @@ def regenerate_agent(simulation_id: str, user_id: int):
         if not state:
             return jsonify({"success": False, "error": t('api.simulationNotFound', id=simulation_id)}), 404
 
-        if state.status != SimulationStatus.PROFILES_READY:
+        ALLOWED_REGEN_STATUSES = {
+            SimulationStatus.PROFILES_READY,
+            SimulationStatus.READY,
+            SimulationStatus.PAUSED,
+            SimulationStatus.COMPLETED,
+        }
+        if state.status not in ALLOWED_REGEN_STATUSES:
             return jsonify({
                 "success": False,
                 "error": t('api.requireProfilesReady', status=state.status.value)

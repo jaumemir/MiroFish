@@ -61,9 +61,15 @@ param jwtSecretKey string
 @secure()
 param adminPassword string
 
-@description('Connection string Azure Communication Services (opcional)')
+@description('Endpoint Azure Communication Services (opcional — buit desactiva emails)')
+param acsEndpoint string = ''
+
+@description('Clau d\'accés ACS (base64, des de Azure Portal > Communication Services > Keys)')
 @secure()
-param acsConnectionString string = ''
+param acsAccessKey string = ''
+
+@description('Nom visible del remitent ACS')
+param acsSenderDisplayName string = 'MiroFish'
 
 @description('Connection string del Storage Account per a Azure Files (output d\'infra.bicep)')
 @secure()
@@ -184,7 +190,7 @@ var optionalSecrets = concat(
   empty(neo4jPassword)         ? [] : [{ name: 'neo4j-password',           value: neo4jPassword }],
   empty(storageConnectionString) ? [] : [{ name: 'storage-connection-string', value: storageConnectionString }],
   empty(databaseUrl)           ? [] : [{ name: 'database-url',             value: databaseUrl }],
-  empty(acsConnectionString)   ? [] : [{ name: 'acs-connection-string',    value: acsConnectionString }]
+  empty(acsAccessKey)          ? [] : [{ name: 'acs-access-key',           value: acsAccessKey }]
 )
 var allSecrets = concat(mandatorySecrets, optionalSecrets)
 
@@ -194,7 +200,9 @@ var mandatoryEnv = [
   { name: 'ADMIN_PASSWORD',               secretRef: 'admin-password' }
   { name: 'JWT_ACCESS_TOKEN_EXPIRES',     value: jwtAccessTokenExpires }
   { name: 'JWT_REFRESH_TOKEN_EXPIRES',    value: jwtRefreshTokenExpires }
+  { name: 'ACS_ENDPOINT',                 value: acsEndpoint }
   { name: 'ACS_SENDER_ADDRESS',           value: acsSenderAddress }
+  { name: 'ACS_SENDER_DISPLAY_NAME',      value: acsSenderDisplayName }
   { name: 'ACS_INVITATION_TTL_HOURS',     value: acsInvitationTtlHours }
   { name: 'ACS_RESET_PASSWORD_TTL_HOURS', value: acsResetPasswordTtlHours }
   { name: 'LLM_API_KEY',   secretRef: 'llm-api-key' }
@@ -229,7 +237,7 @@ var optionalEnv = concat(
   empty(neo4jPassword)           ? [] : [{ name: 'NEO4J_PASSWORD',                 secretRef: 'neo4j-password' }],
   empty(storageConnectionString) ? [] : [{ name: 'AZURE_STORAGE_CONNECTION_STRING', secretRef: 'storage-connection-string' }],
   empty(databaseUrl)             ? [] : [{ name: 'DATABASE_URL',                   secretRef: 'database-url' }],
-  empty(acsConnectionString)     ? [] : [{ name: 'ACS_CONNECTION_STRING',          secretRef: 'acs-connection-string' }]
+  empty(acsAccessKey)            ? [] : [{ name: 'ACS_ACCESS_KEY',                 secretRef: 'acs-access-key' }]
 )
 var allEnv = concat(mandatoryEnv, optionalEnv)
 

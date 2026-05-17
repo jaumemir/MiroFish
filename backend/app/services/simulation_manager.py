@@ -135,10 +135,7 @@ class SimulationManager:
     """
 
     # Simulation data storage directory
-    SIMULATION_DATA_DIR = os.path.join(
-        os.path.dirname(__file__),
-        '../../uploads/simulations'
-    )
+    SIMULATION_DATA_DIR = Config.OASIS_SIMULATION_DATA_DIR
 
     def __init__(self):
         # Ensure directory exists
@@ -154,7 +151,7 @@ class SimulationManager:
         return sim_dir
 
     def _save_simulation_state(self, state: SimulationState):
-        """Save simulation state to file"""
+        """Save simulation state to file and sync status to DB."""
         sim_dir = self._get_simulation_dir(state.simulation_id)
         state_file = os.path.join(sim_dir, "state.json")
 
@@ -164,6 +161,22 @@ class SimulationManager:
             json.dump(state.to_dict(), f, ensure_ascii=False, indent=2)
 
         self._simulations[state.simulation_id] = state
+        self._sync_status_to_db(state)
+
+    def _sync_status_to_db(self, state: SimulationState) -> None:
+        """Sync simulation status to DB (best-effort, never raises)."""
+        try:
+            from ..db import get_session
+            from ..models.db_models import SimulationModel
+
+            status = state.status.value if hasattr(state.status, 'value') else state.status
+            with get_session() as db:
+                rec = db.get(SimulationModel, state.simulation_id)
+                if rec:
+                    rec.status = status
+                    db.commit()
+        except Exception as e:
+            logger.debug(f"Could not sync simulation status to DB: {e}")
 
     def _load_simulation_state(self, simulation_id: str) -> Optional[SimulationState]:
         """Load simulation state from file"""
@@ -216,7 +229,7 @@ class SimulationManager:
 
         Args:
             project_id: project ID
-            graph_id: Zep graph ID
+            graph_id: Zep external graph ID (e.g. mirofish_abc123)
             enable_twitter: whether to enable Twitter simulation
             enable_reddit: whether to enable Reddit simulation
 
@@ -235,9 +248,96 @@ class SimulationManager:
         )
 
         self._save_simulation_state(state)
+        self._register_simulation_in_db(state)
         logger.info(f"Simulation created: {simulation_id}, project={project_id}, graph={graph_id}")
 
         return state
+
+    def _register_simulation_in_db(self, state: SimulationState) -> None:
+        """Register the simulation in the relational DB (1:N with project)."""
+        try:
+            from ..db import get_session
+            from ..models.db_models import SimulationModel, GraphModel
+            from sqlalchemy import select
+
+            platform = 'twitter' if state.enable_twitter else 'reddit'
+            status = state.status.value if hasattr(state.status, 'value') else state.status
+
+            with get_session() as db:
+                # Resolve external_id → GraphModel.id
+                graph_uuid = None
+                if state.graph_id:
+                    stmt = select(GraphModel).where(GraphModel.external_id == state.graph_id)
+                    graph_rec = db.execute(stmt).scalars().first()
+                    if graph_rec:
+                        graph_uuid = graph_rec.id
+
+                rec = SimulationModel(
+                    id=state.simulation_id,
+                    project_id=state.project_id,
+                    graph_id=graph_uuid,
+                    status=status,
+                    platform=platform,
+                )
+                db.add(rec)
+                db.commit()
+        except Exception as e:
+            logger.warning(f"Could not register simulation in DB: {e}")
+
+    def migrate_filesystem_simulations_to_db(self, project_id: str) -> int:
+        """
+        One-time lazy migration: register filesystem simulations that are missing from the DB.
+        Called from get_project_detail to backfill existing data. Returns count of rows inserted.
+        """
+        try:
+            from ..db import get_session
+            from ..models.db_models import SimulationModel, GraphModel
+            from sqlalchemy import select
+
+            fs_sims = self.list_simulations(project_id=project_id)
+            if not fs_sims:
+                return 0
+
+            inserted = 0
+            with get_session() as db:
+                for state in fs_sims:
+                    existing = db.get(SimulationModel, state.simulation_id)
+                    if existing:
+                        continue
+
+                    graph_uuid = None
+                    if state.graph_id:
+                        stmt = select(GraphModel).where(GraphModel.external_id == state.graph_id)
+                        graph_rec = db.execute(stmt).scalars().first()
+                        if graph_rec:
+                            graph_uuid = graph_rec.id
+
+                    platform = 'twitter' if state.enable_twitter else 'reddit'
+                    status = state.status.value if hasattr(state.status, 'value') else state.status
+                    try:
+                        created_at = datetime.fromisoformat(state.created_at)
+                    except Exception:
+                        created_at = datetime.now()
+
+                    rec = SimulationModel(
+                        id=state.simulation_id,
+                        project_id=state.project_id,
+                        graph_id=graph_uuid,
+                        status=status,
+                        platform=platform,
+                        created_at=created_at,
+                    )
+                    db.add(rec)
+                    inserted += 1
+
+                if inserted:
+                    db.commit()
+                    logger.info(f"Migrated {inserted} filesystem simulations to DB for project {project_id}")
+
+            return inserted
+        except Exception as e:
+            logger.warning(f"Could not migrate filesystem simulations to DB: {e}")
+            return 0
 
     def prepare_simulation(
         self,
