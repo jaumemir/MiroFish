@@ -443,6 +443,8 @@ async function openProjectDetail(projectId) {
   projectDetailError.value = ''
   projectDetailLoading.value = true
   showProjectModal.value = true
+  projectDeleteConfirmInput.value = ''
+  simDeleteConfirm.value = null
   try {
     const res = await service.get(`/api/admin/projects/${projectId}`)
     projectDetail.value = res.data?.data || null
