@@ -936,6 +936,7 @@
     },
     "passwordReset": {
       "subject": "MiroFish — Password reset request",
+      "subtitle": "Multi-agent simulation platform",
       "greeting": "Hello, {email}!",
       "body": "We received a request to reset the password for your MiroFish account. If this was not you, you can ignore this email and your password will not change.",
       "cta": "Reset password",

@@ -951,6 +951,7 @@
     },
     "passwordReset": {
       "subject": "MiroFish — Sol·licitud de canvi de contrasenya",
+      "subtitle": "Plataforma de simulació multi-agent",
       "greeting": "Hola, {email}!",
       "body": "Hem rebut una sol·licitud per canviar la contrasenya del teu compte de MiroFish. Si no has estat tu, pots ignorar aquest correu i la contrasenya no canviarà.",
       "cta": "Canviar la contrasenya",

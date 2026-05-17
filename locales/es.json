@@ -827,6 +827,7 @@
     },
     "passwordReset": {
       "subject": "MiroFish — Solicitud de cambio de contraseña",
+      "subtitle": "Plataforma de simulación multi-agente",
       "greeting": "¡Hola, {email}!",
       "body": "Hemos recibido una solicitud para cambiar la contraseña de tu cuenta de MiroFish. Si no has sido tú, puedes ignorar este correo y la contraseña no cambiará.",
       "cta": "Cambiar la contraseña",

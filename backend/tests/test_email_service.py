@@ -82,13 +82,14 @@ def test_reset_html_contains_cta_url(app_ctx):
 
 def test_reset_html_contains_ttl(app_ctx):
     from backend.app.services.email_service import _build_reset_html
-    html = _build_reset_html("user@example.com", "https://example.com/x", 2)
-    assert "2" in html
+    html = _build_reset_html("user@example.com", "https://example.com/x", 777)
+    assert "777" in html
 
 def test_reset_html_escapes_xss_in_email(app_ctx):
     from backend.app.services.email_service import _build_reset_html
     html = _build_reset_html("<b>bad</b>@example.com", "https://example.com/x", 1)
     assert "<b>" not in html
+    assert "&lt;b&gt;" in html
 
 def test_reset_html_is_valid_html_structure(app_ctx):
     from backend.app.services.email_service import _build_reset_html
