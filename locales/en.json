@@ -36,6 +36,45 @@
     "visitGithub": "Visit our Github page"
   },
   "home": {
+    "tagline": "Concise & Universal Collective Intelligence Engine",
+    "version": "/ v0.1-Preview",
+    "heroTitle1": "Upload reports,",
+    "heroTitle2": "Predict the future",
+    "heroDesc": "From a single document, {brand} extracts reality seeds to auto-generate a parallel world with up to {agentScale}. Inject variables from an omniscient perspective to find the {optimalSolution} in complex group dynamics.",
+    "heroDescBrand": "MiroFish",
+    "heroDescAgentScale": "Agents at million scale",
+    "heroDescOptimalSolution": "\"local optimum\"",
+    "slogan": "Let Agents rehearse the future, let decisions prevail",
+    "systemStatus": "System Status",
+    "systemReady": "Ready",
+    "systemReadyDesc": "Prediction engine on standby. Upload unstructured data to initialize a simulation sequence.",
+    "metricLowCost": "Low Cost",
+    "metricLowCostDesc": "~$5/sim average",
+    "metricHighAvail": "Scalable",
+    "metricHighAvailDesc": "Millions of Agents",
+    "workflowSequence": "Workflow",
+    "step01Title": "Graph Build",
+    "step01Desc": "Seed extraction & Memory injection & GraphRAG construction",
+    "step02Title": "Environment Setup",
+    "step02Desc": "Entity extraction & Persona generation & Agent config injection",
+    "step03Title": "Simulation",
+    "step03Desc": "Dual-platform parallel simulation & Auto requirement analysis & Temporal memory",
+    "step04Title": "Report",
+    "step04Desc": "ReportAgent interacts with post-simulation environment via advanced tools",
+    "step05Title": "Interaction",
+    "step05Desc": "Chat with any simulated individual & Converse with ReportAgent",
+    "realitySeed": "REALITY SEED",
+    "supportedFormats": "PDF / MD / TXT",
+    "dragToUpload": "Drag files here",
+    "orBrowse": "or click to browse",
+    "inputParams": "PARAMS",
+    "simulationPrompt": "SIMULATION PROMPT",
+    "promptPlaceholder": "Describe the simulation scenario...",
+    "engineBadge": "Engine: MiroFish-V1.0",
+    "startEngine": "START",
+    "initializing": "Initializing...",
+    "importOntology": "Import ontology",
+    "importOntologyHint": "Select ontology JSON file",
     "myProjects": "My Projects",
     "newProject": "New Project",
     "noProjects": "No projects yet. Create your first one.",
@@ -44,14 +83,8 @@
     "rename": "Rename",
     "delete": "Delete",
     "confirmDelete": "Delete project?",
-    "realitySeed": "REALITY SEED",
-    "supportedFormats": "PDF / MD / TXT",
-    "simulationPrompt": "SIMULATION PROMPT",
-    "promptPlaceholder": "Describe the simulation scenario...",
-    "startEngine": "START",
-    "dragToUpload": "Drag files here",
-    "orBrowse": "or click to browse",
-    "inputParams": "PARAMS"
+    "supportedFormatsShort": "PDF / MD / TXT",
+    "startEngineShort": "START"
   },
   "main": {
     "layoutGraph": "Graph",
@@ -323,17 +356,7 @@
     "panelRelatedEdges": "Related Edges",
     "panelRelatedNodes": "Related Nodes",
     "world1": "World 1",
-    "world2": "World 2",
-    "downloadReport": "Download Report",
-    "reportFailedGeneric": "Report generation failed",
-    "reportFailedTitle": "Report generation failed",
-    "reportFailedBanner": "Report generation failed",
-    "retryBtn": "Retry",
-    "retryFailed": "Failed to restart report generation",
-    "statusFailed": "Failed",
-    "statusCompleted": "Completed",
-    "statusGenerating": "Generating...",
-    "statusWaiting": "Waiting"
+    "world2": "World 2"
   },
   "step5": {
     "newSimulation": "← New simulation",
@@ -487,14 +510,7 @@
     "envRunning": "Environment is running and ready for Interview commands",
     "envNotRunningShort": "Environment not running or closed",
     "requireGraphIdAndQuery": "Please provide graph_id and query",
-    "initReportAgent": "Initializing Report Agent...",
-    "requireFields": "No fields provided",
-    "requireEntityUuid": "source_entity_uuid is required",
-    "requireProfilesReady": "Simulation must be in profiles_ready status (current: {status})",
-    "agentNotFound": "Agent user_id={user_id} not found",
-    "agentNoSourceEntity": "Agent has no source_entity_uuid — cannot regenerate",
-    "cannotCreateAgentInStatus": "Cannot create agent when simulation status is {status}",
-    "regenerateRequiresProfilesReady": "Regenerate requires profiles_ready status (current: {status})"
+    "initReportAgent": "Initializing Report Agent..."
   },
   "progress": {
     "initGraphService": "Initializing graph build service...",
@@ -556,8 +572,7 @@
     "readingGraphEntities": "Reading Graph Entities",
     "generatingProfiles": "Generating Agent Profiles",
     "generatingSimConfig": "Generating Simulation Config",
-    "preparingScripts": "Preparing Scripts",
-    "generatingProfile": "Generating agent profile..."
+    "preparingScripts": "Preparing Scripts"
   },
   "log": {
     "preparingGoBack": "Preparing to return to Step 2, closing simulation...",
@@ -813,9 +828,6 @@
     "done": "Account activated! Redirecting to login...",
     "invalidToken": "This invitation link is invalid or has expired."
   },
-  "error": {
-    "filesLostAfterRefresh": "Files were lost after page refresh. Redirecting to home to re-select files…"
-  },
   "admin": {
     "users": "Users",
     "config": "Configuration",
@@ -846,6 +858,9 @@
     "deleteUserConfirmPlaceholder": "Type the email to confirm",
     "deleteUserConfirm": "Delete permanently",
     "deleteUserSuccess": "User deleted."
+  },
+  "error": {
+    "filesLostAfterRefresh": "Files were lost after page refresh. Redirecting to home to re-select files…"
   },
   "projectDetail": {
     "backToHome": "Back to my projects",
