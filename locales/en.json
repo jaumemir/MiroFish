@@ -917,5 +917,31 @@
     "readOnlyMode": "Read-only mode",
     "editSection": "Edit this section",
     "launchSimulation": "▶ Launch simulation"
+  },
+  "email": {
+    "common": {
+      "urlFallbackLabel": "If the button doesn't work, copy this URL into your browser:",
+      "footer": "MiroFish — Multi-agent simulation platform with AI"
+    },
+    "invitation": {
+      "subject": "You've been invited to MiroFish",
+      "subtitle": "Multi-agent simulation platform",
+      "greeting": "Hello, {name}!",
+      "body1": "You have been invited to MiroFish, the multi-agent simulation platform with artificial intelligence.",
+      "body2": "Click the button below to set your password and activate your account.",
+      "cta": "Accept invitation",
+      "ttlNotice": "This link is valid for {hours} hours.",
+      "ignore": "If you were not expecting this invitation, you can ignore this message.",
+      "plainBody": "You have been invited to MiroFish. To complete your registration, go to:"
+    },
+    "passwordReset": {
+      "subject": "MiroFish — Password reset request",
+      "greeting": "Hello, {email}!",
+      "body": "We received a request to reset the password for your MiroFish account. If this was not you, you can ignore this email and your password will not change.",
+      "cta": "Reset password",
+      "ttlNotice": "This link is valid for {hours} hours.",
+      "ignore": "If you did not request a password reset, you can ignore this message.",
+      "plainCta": "To reset your password, go to:"
+    }
   }
 }
