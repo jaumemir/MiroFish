@@ -18,7 +18,8 @@
     "minutes": "minutos",
     "rounds": "rondas",
     "items": "elementos",
-    "edit": "Editar"
+    "edit": "Editar",
+    "errorSaving": "Error al guardar la configuración"
   },
   "home": {
     "realitySeed": "01 / Semilla de realidad",

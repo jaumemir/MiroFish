@@ -18,7 +18,8 @@
     "minutes": "minutes",
     "rounds": "rounds",
     "items": "items",
-    "edit": "Edit"
+    "edit": "Edit",
+    "errorSaving": "Error saving configuration"
   },
   "home": {
     "realitySeed": "REALITY SEED",

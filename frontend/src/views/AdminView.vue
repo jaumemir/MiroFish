@@ -196,6 +196,7 @@
         </div>
         <div v-else class="empty-state">{{ $t('admin.noConfig') }}</div>
         <div v-if="configSaved" class="success-msg">{{ $t('admin.configSaved') }}</div>
+        <div v-if="configSaveError" class="error-msg">{{ $t('common.errorSaving') }}</div>
       </div>
 
       <!-- Tab: Historial -->
@@ -406,6 +407,7 @@ const deleteModal = ref({
 const configEntries = ref([])
 const configValues = ref({})
 const configSaved = ref(false)
+const configSaveError = ref(false)
 const secretInputs = ref({})
 
 const GROUP_ORDER = ['llm', 'simulation', 'report', 'email', 'limits']
@@ -599,17 +601,22 @@ async function saveConfig() {
   for (const entry of configEntries.value) {
     if (entry.is_secret) {
       const v = secretInputs.value[entry.key]
-      if (v && v !== '') payload[entry.key] = v
+      if (v !== '') payload[entry.key] = v
     } else {
       payload[entry.key] = configValues.value[entry.key]
     }
   }
-  await service.patch('/api/admin/config', payload)
-  for (const key of Object.keys(secretInputs.value)) {
-    secretInputs.value[key] = ''
+  try {
+    await service.patch('/api/admin/config', payload)
+    for (const key of Object.keys(secretInputs.value)) {
+      secretInputs.value[key] = ''
+    }
+    configSaved.value = true
+    setTimeout(() => { configSaved.value = false }, 2000)
+  } catch {
+    configSaveError.value = true
+    setTimeout(() => { configSaveError.value = false }, 3000)
   }
-  configSaved.value = true
-  setTimeout(() => { configSaved.value = false }, 2000)
 }
 
 function formatDate(iso) {

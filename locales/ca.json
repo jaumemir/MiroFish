@@ -18,7 +18,8 @@
     "minutes": "minuts",
     "rounds": "rondes",
     "items": "elements",
-    "edit": "Edita"
+    "edit": "Edita",
+    "errorSaving": "Error en desar la configuració"
   },
   "home": {
     "realitySeed": "01 / Llavor de realitat",
