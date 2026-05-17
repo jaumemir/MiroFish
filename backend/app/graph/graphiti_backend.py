@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from .base import GraphBackend
 from ..config import Config
+from ..config_db import get_config
 from ..utils.logger import get_logger
 from ..utils.llm_client import parse_azure_url
 
@@ -146,39 +147,39 @@ class GraphitiBackend(GraphBackend):
         from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
         from openai import AsyncOpenAI
 
-        llm_base_url, llm_query = parse_azure_url(Config.LLM_BASE_URL)
-        small_base_url, small_query = parse_azure_url(Config.LLM_SMALL_BASE_URL)
-        embed_base_url, embed_query = parse_azure_url(Config.LLM_EMBED_BASE_URL)
+        llm_base_url, llm_query = parse_azure_url(get_config('llm.base_url', Config.LLM_BASE_URL))
+        small_base_url, small_query = parse_azure_url(get_config('llm.small.base_url', Config.LLM_SMALL_BASE_URL))
+        embed_base_url, embed_query = parse_azure_url(get_config('llm.embed.base_url', Config.LLM_EMBED_BASE_URL))
 
         # Pre-built async clients so api-version is passed as default_query (Azure requirement)
         async_llm_client = AsyncOpenAI(
-            api_key=Config.LLM_API_KEY,
+            api_key=get_config('llm.api_key', Config.LLM_API_KEY),
             base_url=llm_base_url,
             default_query=llm_query or None,
         )
         async_small_client = AsyncOpenAI(
-            api_key=Config.LLM_SMALL_API_KEY,
+            api_key=get_config('llm.small.api_key', Config.LLM_SMALL_API_KEY),
             base_url=small_base_url,
             default_query=small_query or None,
         )
         async_embed_client = AsyncOpenAI(
-            api_key=Config.LLM_EMBED_API_KEY,
+            api_key=get_config('llm.embed.api_key', Config.LLM_EMBED_API_KEY),
             base_url=embed_base_url,
             default_query=embed_query or None,
         )
 
         llm_config = LLMConfig(
-            api_key=Config.LLM_API_KEY,
-            model=Config.LLM_MODEL_NAME,
-            small_model=Config.LLM_SMALL_MODEL_NAME,
+            api_key=get_config('llm.api_key', Config.LLM_API_KEY),
+            model=get_config('llm.model_name', Config.LLM_MODEL_NAME),
+            small_model=get_config('llm.small.model_name', Config.LLM_SMALL_MODEL_NAME),
             base_url=llm_base_url,
         )
         llm_client = _make_azure_generic_client(config=llm_config, client=async_llm_client)
         embedder = OpenAIEmbedder(
             config=OpenAIEmbedderConfig(
-                api_key=Config.LLM_EMBED_API_KEY,
+                api_key=get_config('llm.embed.api_key', Config.LLM_EMBED_API_KEY),
                 base_url=embed_base_url,
-                embedding_model=Config.LLM_EMBED_MODEL_NAME,
+                embedding_model=get_config('llm.embed.model_name', Config.LLM_EMBED_MODEL_NAME),
             ),
             client=async_embed_client,
         )
