@@ -10,6 +10,7 @@ from urllib.parse import urlparse, parse_qs, urlunparse
 from openai import OpenAI
 
 from ..config import Config
+from ..config_db import get_config
 
 
 def parse_azure_url(raw_url: str):
@@ -44,15 +45,16 @@ class LLMClient:
         base_url: Optional[str] = None,
         model: Optional[str] = None
     ):
-        self.api_key = api_key or Config.LLM_API_KEY
-        raw_url = base_url or Config.LLM_BASE_URL
-        self.model = model or Config.LLM_MODEL_NAME
+        self.api_key = api_key or get_config('llm.api_key', Config.LLM_API_KEY)
+        raw_url = base_url or get_config('llm.base_url', Config.LLM_BASE_URL)
+        self.model = model or get_config('llm.model_name', Config.LLM_MODEL_NAME)
 
         if not self.api_key:
             raise ValueError("LLM_API_KEY is not configured")
 
         # Google AI Studio OpenAI-compatible endpoint
-        if (Config.LLM_PROVIDER or "").lower() == "gemini" and not base_url:
+        provider = get_config('llm.provider', Config.LLM_PROVIDER or '')
+        if provider.lower() == "gemini" and not base_url:
             raw_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
         raw_url, default_query = parse_azure_url(raw_url)
