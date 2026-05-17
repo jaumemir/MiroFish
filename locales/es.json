@@ -785,7 +785,13 @@
     "nodeCount": "Nodos",
     "edgeCount": "Aristas",
     "detail": "Detalle",
-    "backend": "Backend"
+    "backend": "Backend",
+    "configGroupSimulation": "Simulación",
+    "configGroupReport": "Informe",
+    "configGroupLimits": "Límites",
+    "configSecondaryLlm": "LLMs secundarios (Boost / Embed / Small)",
+    "configSecretSet": "(ya configurado)",
+    "configSecretUnset": "(no configurado)"
   },
   "error": {
     "filesLostAfterRefresh": "Los archivos se perdieron al refrescar la página. Redirigiendo al inicio para volver a seleccionarlos…"

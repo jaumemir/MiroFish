@@ -785,7 +785,13 @@
     "nodeCount": "Nodes",
     "edgeCount": "Arestes",
     "detail": "Detall",
-    "backend": "Backend"
+    "backend": "Backend",
+    "configGroupSimulation": "Simulació",
+    "configGroupReport": "Informe",
+    "configGroupLimits": "Límits",
+    "configSecondaryLlm": "LLMs secundaris (Boost / Embed / Small)",
+    "configSecretSet": "(ja configurat)",
+    "configSecretUnset": "(no configurat)"
   },
   "error": {
     "filesLostAfterRefresh": "Els fitxers s'han perdut en refrescar la pàgina. Redirigint a l'inici per tornar a seleccionar-los…"

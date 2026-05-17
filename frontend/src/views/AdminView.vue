@@ -125,18 +125,73 @@
           <h2 class="section-title">{{ $t('admin.config') }}</h2>
           <button class="start-btn" @click="saveConfig">{{ $t('common.save') }}</button>
         </div>
-        <div v-if="configEntries.length" class="config-form">
-          <div v-for="entry in configEntries" :key="entry.key" class="config-row">
-            <label class="config-label">
-              <span class="config-key mono">{{ entry.key }}</span>
-              <span class="config-desc">{{ entry.label }}</span>
-            </label>
-            <input
-              v-model="configValues[entry.key]"
-              :type="entry.is_secret ? 'password' : 'text'"
-              class="field-input"
-              :placeholder="entry.is_secret ? '●●●●' : entry.value"
-            />
+        <div v-if="groupedConfig.length" class="config-form">
+          <div v-for="group in groupedConfig" :key="group.key" class="config-group">
+            <div class="config-group-header">{{ group.label }}</div>
+
+            <!-- LLM group: primary keys + collapsible secondary (boost/embed/small) -->
+            <template v-if="group.key === 'llm'">
+              <template v-for="entry in group.entries" :key="entry.key">
+                <div v-if="!SECONDARY_LLM_PREFIXES.some(p => entry.key.startsWith(p))" class="config-row">
+                  <label class="config-label">
+                    <span class="config-key mono">{{ entry.key }}</span>
+                    <span class="config-desc">{{ entry.label }}</span>
+                  </label>
+                  <input
+                    v-if="entry.is_secret"
+                    type="password"
+                    class="field-input"
+                    v-model="secretInputs[entry.key]"
+                    :placeholder="entry.has_value ? $t('admin.configSecretSet') : $t('admin.configSecretUnset')"
+                    autocomplete="new-password"
+                  />
+                  <input v-else type="text" class="field-input" v-model="configValues[entry.key]" />
+                </div>
+              </template>
+              <div class="config-secondary-toggle">
+                <button class="action-btn" @click="showSecondaryLlm = !showSecondaryLlm">
+                  {{ showSecondaryLlm ? '▲' : '▼' }} {{ $t('admin.configSecondaryLlm') }}
+                </button>
+              </div>
+              <template v-if="showSecondaryLlm">
+                <template v-for="entry in group.entries" :key="entry.key + '-sec'">
+                  <div v-if="SECONDARY_LLM_PREFIXES.some(p => entry.key.startsWith(p))" class="config-row">
+                    <label class="config-label">
+                      <span class="config-key mono">{{ entry.key }}</span>
+                      <span class="config-desc">{{ entry.label }}</span>
+                    </label>
+                    <input
+                      v-if="entry.is_secret"
+                      type="password"
+                      class="field-input"
+                      v-model="secretInputs[entry.key]"
+                      :placeholder="entry.has_value ? $t('admin.configSecretSet') : $t('admin.configSecretUnset')"
+                      autocomplete="new-password"
+                    />
+                    <input v-else type="text" class="field-input" v-model="configValues[entry.key]" />
+                  </div>
+                </template>
+              </template>
+            </template>
+
+            <!-- All other groups: flat list -->
+            <template v-else>
+              <div v-for="entry in group.entries" :key="entry.key" class="config-row">
+                <label class="config-label">
+                  <span class="config-key mono">{{ entry.key }}</span>
+                  <span class="config-desc">{{ entry.label }}</span>
+                </label>
+                <input
+                  v-if="entry.is_secret"
+                  type="password"
+                  class="field-input"
+                  v-model="secretInputs[entry.key]"
+                  :placeholder="entry.has_value ? $t('admin.configSecretSet') : $t('admin.configSecretUnset')"
+                  autocomplete="new-password"
+                />
+                <input v-else type="text" class="field-input" v-model="configValues[entry.key]" />
+              </div>
+            </template>
           </div>
         </div>
         <div v-else class="empty-state">{{ $t('admin.noConfig') }}</div>
@@ -325,7 +380,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import service from '../api/index'
@@ -351,6 +406,32 @@ const deleteModal = ref({
 const configEntries = ref([])
 const configValues = ref({})
 const configSaved = ref(false)
+const secretInputs = ref({})
+
+const GROUP_ORDER = ['llm', 'simulation', 'report', 'email', 'limits']
+const SECONDARY_LLM_PREFIXES = ['llm.boost.', 'llm.embed.', 'llm.small.']
+const showSecondaryLlm = ref(false)
+
+const groupedConfig = computed(() => {
+  const groups = {}
+  for (const entry of configEntries.value) {
+    const g = entry.group || 'other'
+    if (!groups[g]) groups[g] = []
+    groups[g].push(entry)
+  }
+  const groupLabels = {
+    llm: 'LLM',
+    simulation: t('admin.configGroupSimulation'),
+    report: t('admin.configGroupReport'),
+    email: 'Email',
+    limits: t('admin.configGroupLimits'),
+  }
+  return GROUP_ORDER.filter(g => groups[g]).map(g => ({
+    key: g,
+    label: groupLabels[g] || g,
+    entries: groups[g],
+  }))
+})
 
 const executions = ref([])
 
@@ -389,7 +470,10 @@ async function loadConfig() {
     const res = await service.get('/api/admin/config')
     configEntries.value = res.data || []
     configValues.value = Object.fromEntries(
-      configEntries.value.filter(e => !e.is_secret).map(e => [e.key, e.value])
+      configEntries.value.filter(e => !e.is_secret).map(e => [e.key, e.value ?? ''])
+    )
+    secretInputs.value = Object.fromEntries(
+      configEntries.value.filter(e => e.is_secret).map(e => [e.key, ''])
     )
   } catch { /* silent */ }
 }
@@ -404,7 +488,7 @@ async function loadExecutions() {
 async function loadProjects() {
   try {
     const res = await service.get('/api/admin/projects')
-    projects.value = res.data?.data || []
+    projects.value = res.data || []
   } catch { /* silent */ }
 }
 
@@ -415,7 +499,7 @@ async function deleteSimulation(simulationId) {
     simDeleteSuccess.value = simulationId
     setTimeout(() => { simDeleteSuccess.value = '' }, 2000)
     const res = await service.get(`/api/admin/projects/${projectDetail.value.project_id}`)
-    projectDetail.value = res.data?.data || projectDetail.value
+    projectDetail.value = res.data || projectDetail.value
   } catch { /* silent */ }
 }
 
@@ -447,7 +531,7 @@ async function openProjectDetail(projectId) {
   simDeleteConfirm.value = null
   try {
     const res = await service.get(`/api/admin/projects/${projectId}`)
-    projectDetail.value = res.data?.data || null
+    projectDetail.value = res.data || null
   } catch {
     projectDetailError.value = t('common.unknownError')
   } finally {
@@ -512,12 +596,18 @@ async function reinvite(user) {
 
 async function saveConfig() {
   const payload = {}
-  for (const [k, v] of Object.entries(configValues.value)) {
-    if (v !== '' && !configEntries.value.find(e => e.key === k)?.is_secret) {
-      payload[k] = v
+  for (const entry of configEntries.value) {
+    if (entry.is_secret) {
+      const v = secretInputs.value[entry.key]
+      if (v && v !== '') payload[entry.key] = v
+    } else {
+      payload[entry.key] = configValues.value[entry.key]
     }
   }
   await service.patch('/api/admin/config', payload)
+  for (const key of Object.keys(secretInputs.value)) {
+    secretInputs.value[key] = ''
+  }
   configSaved.value = true
   setTimeout(() => { configSaved.value = false }, 2000)
 }
@@ -570,6 +660,11 @@ function formatDate(iso) {
 .config-label { display: flex; flex-direction: column; gap: 2px; }
 .config-key { font-size: 0.8rem; color: #000; }
 .config-desc { font-size: 0.8rem; color: #666; }
+.config-group { margin-bottom: 24px; }
+.config-group-header { font-weight: 600; font-size: 0.85rem; text-transform: uppercase;
+  letter-spacing: 0.05em; color: #555; padding: 8px 0 4px; border-bottom: 2px solid #e8e8e8;
+  margin-bottom: 8px; }
+.config-secondary-toggle { padding: 8px 0; }
 .empty-state { padding: 48px 0; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #999; }
 .success-msg { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #22c55e; border-left: 3px solid #22c55e; padding-left: 10px; margin-top: 8px; }
 .error-msg { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #ff4500; border-left: 3px solid #ff4500; padding-left: 10px; margin-top: 8px; }
