@@ -793,6 +793,48 @@
     "loading": "Autenticando...",
     "invalidCredentials": "Usuario o contraseña incorrectos"
   },
+  "forgotPassword": {
+    "title": "Contraseña olvidada",
+    "subtitle": "Introduce tu correo y te enviaremos un enlace para restablecerla.",
+    "submit": "Enviar enlace de restablecimiento",
+    "sent": "Si existe una cuenta con ese correo, recibirás un enlace de restablecimiento en breve."
+  },
+  "resetPassword": {
+    "title": "Restablecer contraseña",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirma la contraseña",
+    "submit": "Establecer nueva contraseña",
+    "done": "Contraseña actualizada. Ya puedes iniciar sesión.",
+    "goToLogin": "Ir al inicio de sesión",
+    "invalidToken": "Este enlace no es válido o ha caducado.",
+    "passwordMismatch": "Las contraseñas no coinciden."
+  },
+  "email": {
+    "common": {
+      "urlFallbackLabel": "Si el botón no funciona, copia esta URL en tu navegador:",
+      "footer": "MiroFish — Plataforma de simulación multi-agente con IA"
+    },
+    "invitation": {
+      "subject": "Te han invitado a MiroFish",
+      "subtitle": "Plataforma de simulación multi-agente",
+      "greeting": "¡Hola, {name}!",
+      "body1": "Has sido invitado/a a MiroFish, la plataforma de simulación multi-agente con inteligencia artificial.",
+      "body2": "Haz clic en el botón para establecer tu contraseña y activar la cuenta.",
+      "cta": "Aceptar invitación",
+      "ttlNotice": "Este enlace es válido durante {hours} horas.",
+      "ignore": "Si no esperabas esta invitación, puedes ignorar este mensaje.",
+      "plainBody": "Has sido invitado/a a MiroFish. Para completar tu registro, accede a:"
+    },
+    "passwordReset": {
+      "subject": "MiroFish — Solicitud de cambio de contraseña",
+      "greeting": "¡Hola, {email}!",
+      "body": "Hemos recibido una solicitud para cambiar la contraseña de tu cuenta de MiroFish. Si no has sido tú, puedes ignorar este correo y la contraseña no cambiará.",
+      "cta": "Cambiar la contraseña",
+      "ttlNotice": "Este enlace es válido durante {hours} horas.",
+      "ignore": "Si no has solicitado ningún cambio de contraseña, puedes ignorar este mensaje.",
+      "plainCta": "Para cambiar la contraseña, accede a:"
+    }
+  },
   "error": {
     "filesLostAfterRefresh": "Los archivos se perdieron al refrescar la página. Redirigiendo al inicio para volver a seleccionarlos…"
   },
