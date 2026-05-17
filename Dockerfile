@@ -47,14 +47,8 @@ ENV FLASK_DEBUG=False \
 
 EXPOSE 5001
 
-# gunicorn: 1 worker (Container Apps escala horitzontalment via rèpliques)
-# threads=4 per gestionar concurrència sense multiprocessing
-# timeout=300s per cobrir interview/all (timeout IPC 180s) + marge
-CMD ["backend/.venv/bin/gunicorn", \
-     "--bind", "0.0.0.0:5001", \
-     "--workers", "1", \
-     "--threads", "4", \
-     "--timeout", "300", \
-     "--worker-class", "gthread", \
-     "--chdir", "/app/backend", \
-     "wsgi:application"]
+# Entrypoint: executa init_system.py (migra BD i afegeix noves claus system_config)
+# abans d'arrencar gunicorn. Idempotent: no sobreescriu valors ja existents.
+RUN chmod +x /app/backend/entrypoint.sh
+
+CMD ["/app/backend/entrypoint.sh"]
