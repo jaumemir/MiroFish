@@ -79,12 +79,11 @@ def list_executions():
 @require_admin
 def list_admin_projects():
     with get_session() as db:
-        from sqlalchemy import func as sql_func
         stmt = (
             select(
                 ProjectModel,
                 UserModel,
-                sql_func.count(SimulationModel.id).label('simulation_count'),
+                func.count(SimulationModel.id).label('simulation_count'),
             )
             .outerjoin(UserModel, ProjectModel.user_id == UserModel.id)
             .outerjoin(SimulationModel, SimulationModel.project_id == ProjectModel.id)
