@@ -4,7 +4,7 @@ from sqlalchemy import select, desc, func
 from . import admin_bp
 from .. import require_admin
 from ..db import get_session
-from ..models.db_models import SystemConfigModel, SimulationModel, ProjectModel, UserModel
+from ..models.db_models import SystemConfigModel, SimulationModel, ProjectModel, UserModel, GraphModel
 
 
 @admin_bp.route('/config', methods=['GET'])
@@ -73,3 +73,34 @@ def list_executions():
                 'created_at': sim.created_at.isoformat(),
             })
     return jsonify({'success': True, 'data': result, 'total': total, 'page': page, 'pageSize': page_size})
+
+
+@admin_bp.route('/projects', methods=['GET'])
+@require_admin
+def list_admin_projects():
+    with get_session() as db:
+        from sqlalchemy import func as sql_func
+        stmt = (
+            select(
+                ProjectModel,
+                UserModel,
+                sql_func.count(SimulationModel.id).label('simulation_count'),
+            )
+            .outerjoin(UserModel, ProjectModel.user_id == UserModel.id)
+            .outerjoin(SimulationModel, SimulationModel.project_id == ProjectModel.id)
+            .group_by(ProjectModel.id, UserModel.id)
+            .order_by(desc(ProjectModel.created_at))
+        )
+        rows = db.execute(stmt).all()
+        result = []
+        for proj, user, sim_count in rows:
+            result.append({
+                'project_id': proj.id,
+                'name': proj.name,
+                'status': proj.status,
+                'owner_email': user.email if user else None,
+                'owner_name': user.name if user else None,
+                'simulation_count': sim_count,
+                'created_at': proj.created_at.isoformat(),
+            })
+    return jsonify({'success': True, 'data': result, 'total': len(result)})
