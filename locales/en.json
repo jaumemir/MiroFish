@@ -792,7 +792,8 @@
     "configGroupLimits": "Limits",
     "configSecondaryLlm": "Secondary LLMs (Boost / Embed / Small)",
     "configSecretSet": "(already configured)",
-    "configSecretUnset": "(not configured)"
+    "configSecretUnset": "(not configured)",
+    "configProviderGemini": "Provider is Google Gemini"
   },
   "error": {
     "filesLostAfterRefresh": "Files were lost after page refresh. Redirecting to home to re-select files…"

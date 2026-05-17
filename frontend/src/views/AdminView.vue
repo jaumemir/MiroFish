@@ -145,6 +145,14 @@
                     :placeholder="entry.has_value ? $t('admin.configSecretSet') : $t('admin.configSecretUnset')"
                     autocomplete="new-password"
                   />
+                  <label v-else-if="entry.key === 'llm.provider'" class="config-checkbox-label">
+                    <input
+                      type="checkbox"
+                      :checked="configValues['llm.provider'] === 'gemini'"
+                      @change="configValues['llm.provider'] = $event.target.checked ? 'gemini' : ''"
+                    />
+                    {{ $t('admin.configProviderGemini') }}
+                  </label>
                   <input v-else type="text" class="field-input" v-model="configValues[entry.key]" />
                 </div>
               </template>
@@ -672,6 +680,7 @@ function formatDate(iso) {
   letter-spacing: 0.05em; color: #555; padding: 8px 0 4px; border-bottom: 2px solid #e8e8e8;
   margin-bottom: 8px; }
 .config-secondary-toggle { padding: 8px 0; }
+.config-checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; }
 .empty-state { padding: 48px 0; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #999; }
 .success-msg { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #22c55e; border-left: 3px solid #22c55e; padding-left: 10px; margin-top: 8px; }
 .error-msg { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #ff4500; border-left: 3px solid #ff4500; padding-left: 10px; margin-top: 8px; }
