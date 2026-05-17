@@ -470,7 +470,7 @@ async function loadUsers() {
 async function loadConfig() {
   try {
     const res = await service.get('/api/admin/config')
-    configEntries.value = res.data || []
+    configEntries.value = res.data?.data || []
     configValues.value = Object.fromEntries(
       configEntries.value.filter(e => !e.is_secret).map(e => [e.key, e.value ?? ''])
     )
