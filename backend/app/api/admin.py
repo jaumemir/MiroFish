@@ -14,15 +14,21 @@ def get_config():
         entries = db.execute(select(SystemConfigModel)).scalars().all()
         result = []
         for e in entries:
-            result.append({
+            entry = {
                 'key': e.key,
-                'value': '●●●●' if e.is_secret else e.value,
                 'value_type': e.value_type,
                 'group': e.group,
                 'label': e.label,
                 'description': e.description,
                 'is_secret': e.is_secret,
-            })
+            }
+            if e.is_secret:
+                entry['value'] = None
+                entry['has_value'] = bool(e.value)
+            else:
+                entry['value'] = e.value
+                entry['has_value'] = bool(e.value)
+            result.append(entry)
     return jsonify({'success': True, 'data': result})
 
 
@@ -33,8 +39,11 @@ def patch_config():
     with get_session() as db:
         for key, value in data.items():
             entry = db.get(SystemConfigModel, key)
-            if entry:
-                entry.value = str(value)
+            if entry is None:
+                continue
+            if entry.is_secret and not value:
+                continue
+            entry.value = str(value)
         db.commit()
     return jsonify({'success': True})
 
