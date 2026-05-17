@@ -76,7 +76,15 @@
     "importOntology": "Importar ontología",
     "importOntologyHint": "Seleccionar archivo JSON de ontología",
     "myProjects": "Mis Proyectos",
-    "newProject": "Nuevo Proyecto"
+    "newProject": "Nuevo Proyecto",
+    "noProjects": "Aún no hay proyectos. Crea el primero.",
+    "admin": "Administración",
+    "logout": "Cerrar sesión",
+    "rename": "Renombrar",
+    "delete": "Eliminar",
+    "confirmDelete": "¿Eliminar el proyecto?",
+    "supportedFormatsShort": "PDF / MD / TXT",
+    "startEngineShort": "INICIAR"
   },
   "main": {
     "layoutGraph": "Grafo",
@@ -787,11 +795,15 @@
     "subtitle": "// Acceso autenticado requerido",
     "username": "Usuario",
     "usernamePlaceholder": "demo",
+    "email": "Correo electrónico",
+    "emailPlaceholder": "tu{'@'}email.com",
     "password": "Contraseña",
     "passwordPlaceholder": "••••••••",
     "submit": "Entrar",
     "loading": "Autenticando...",
-    "invalidCredentials": "Usuario o contraseña incorrectos"
+    "invalidCredentials": "Usuario o contraseña incorrectos",
+    "forgotPassword": "¿Olvidaste la contraseña?",
+    "accountActivated": "Cuenta activada. Ya puedes iniciar sesión."
   },
   "forgotPassword": {
     "title": "Contraseña olvidada",
@@ -809,32 +821,43 @@
     "invalidToken": "Este enlace no es válido o ha caducado.",
     "passwordMismatch": "Las contraseñas no coinciden."
   },
-  "email": {
-    "common": {
-      "urlFallbackLabel": "Si el botón no funciona, copia esta URL en tu navegador:",
-      "footer": "MiroFish — Plataforma de simulación multi-agente con IA"
-    },
-    "invitation": {
-      "subject": "Te han invitado a MiroFish",
-      "subtitle": "Plataforma de simulación multi-agente",
-      "greeting": "¡Hola, {name}!",
-      "body1": "Has sido invitado/a a MiroFish, la plataforma de simulación multi-agente con inteligencia artificial.",
-      "body2": "Haz clic en el botón para establecer tu contraseña y activar la cuenta.",
-      "cta": "Aceptar invitación",
-      "ttlNotice": "Este enlace es válido durante {hours} horas.",
-      "ignore": "Si no esperabas esta invitación, puedes ignorar este mensaje.",
-      "plainBody": "Has sido invitado/a a MiroFish. Para completar tu registro, accede a:"
-    },
-    "passwordReset": {
-      "subject": "MiroFish — Solicitud de cambio de contraseña",
-      "subtitle": "Plataforma de simulación multi-agente",
-      "greeting": "¡Hola, {email}!",
-      "body": "Hemos recibido una solicitud para cambiar la contraseña de tu cuenta de MiroFish. Si no has sido tú, puedes ignorar este correo y la contraseña no cambiará.",
-      "cta": "Cambiar la contraseña",
-      "ttlNotice": "Este enlace es válido durante {hours} horas.",
-      "ignore": "Si no has solicitado ningún cambio de contraseña, puedes ignorar este mensaje.",
-      "plainCta": "Para cambiar la contraseña, accede a:"
-    }
+  "setPassword": {
+    "title": "Bienvenido/a a MiroFish",
+    "newPassword": "Elige una contraseña",
+    "submit": "Activar cuenta",
+    "done": "¡Cuenta activada! Redirigiendo al inicio de sesión...",
+    "invalidToken": "Este enlace de invitación no es válido o ha caducado."
+  },
+  "admin": {
+    "users": "Usuarios",
+    "config": "Configuración",
+    "executions": "Historial de ejecuciones",
+    "inviteUser": "Invitar usuario",
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "role": "Rol",
+    "status": "Estado",
+    "created": "Creado",
+    "actions": "Acciones",
+    "send": "Enviar",
+    "inviteSent": "Invitación enviada.",
+    "reinvite": "Reenviar invitación",
+    "disable": "Desactivar usuario",
+    "noUsers": "No se encontraron usuarios.",
+    "noConfig": "No hay entradas de configuración.",
+    "configSaved": "Configuración guardada.",
+    "noExecutions": "No se encontraron ejecuciones.",
+    "user": "Usuario",
+    "project": "Proyecto",
+    "platform": "Plataforma",
+    "rounds": "Rondas",
+    "enableUser": "Reactivar",
+    "deleteUser": "Eliminar",
+    "deleteUserTitle": "Eliminar usuario",
+    "deleteUserWarning": "Esta acción es irreversible. Se eliminarán todos los proyectos, simulaciones, grafos y archivos de {name} ({email}).",
+    "deleteUserConfirmPlaceholder": "Escribe el email para confirmar",
+    "deleteUserConfirm": "Eliminar permanentemente",
+    "deleteUserSuccess": "Usuario eliminado."
   },
   "error": {
     "filesLostAfterRefresh": "Los archivos se perdieron al refrescar la página. Redirigiendo al inicio para volver a seleccionarlos…"
@@ -909,5 +932,32 @@
     "readOnlyMode": "Modo consulta",
     "editSection": "Editar esta sección",
     "launchSimulation": "▶ Lanzar simulación"
+  },
+  "email": {
+    "common": {
+      "urlFallbackLabel": "Si el botón no funciona, copia esta URL en tu navegador:",
+      "footer": "MiroFish — Plataforma de simulación multi-agente con IA"
+    },
+    "invitation": {
+      "subject": "Te han invitado a MiroFish",
+      "subtitle": "Plataforma de simulación multi-agente",
+      "greeting": "¡Hola, {name}!",
+      "body1": "Has sido invitado/a a MiroFish, la plataforma de simulación multi-agente con inteligencia artificial.",
+      "body2": "Haz clic en el botón para establecer tu contraseña y activar la cuenta.",
+      "cta": "Aceptar invitación",
+      "ttlNotice": "Este enlace es válido durante {hours} horas.",
+      "ignore": "Si no esperabas esta invitación, puedes ignorar este mensaje.",
+      "plainBody": "Has sido invitado/a a MiroFish. Para completar tu registro, accede a:"
+    },
+    "passwordReset": {
+      "subject": "MiroFish — Solicitud de cambio de contraseña",
+      "subtitle": "Plataforma de simulación multi-agente",
+      "greeting": "¡Hola, {email}!",
+      "body": "Hemos recibido una solicitud para cambiar la contraseña de tu cuenta de MiroFish. Si no has sido tú, puedes ignorar este correo y la contraseña no cambiará.",
+      "cta": "Cambiar la contraseña",
+      "ttlNotice": "Este enlace es válido durante {hours} horas.",
+      "ignore": "Si no has solicitado ningún cambio de contraseña, puedes ignorar este mensaje.",
+      "plainCta": "Para cambiar la contraseña, accede a:"
+    }
   }
 }
