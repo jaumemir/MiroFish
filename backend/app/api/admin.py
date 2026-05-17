@@ -41,7 +41,7 @@ def patch_config():
             entry = db.get(SystemConfigModel, key)
             if entry is None:
                 continue
-            if entry.is_secret and not value:
+            if entry.is_secret and value in (None, ''):
                 continue
             entry.value = str(value)
         db.commit()

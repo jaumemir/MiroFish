@@ -147,3 +147,24 @@ def test_patch_config_secret_with_value_updates(client, in_memory_db):
     with get_session() as db:
         entry = db.get(SystemConfigModel, 'llm.api_key')
         assert entry.value == 'sk-new-key'
+
+
+def test_patch_config_secret_null_does_not_update(client, in_memory_db):
+    """PATCH amb value=None en clau secreta no modifica el valor actual."""
+    from backend.app.models.db_models import SystemConfigModel
+    from backend.app.db import get_session
+    with get_session() as db:
+        db.add(SystemConfigModel(
+            key='llm.api_key', value='sk-original',
+            value_type='string', group='llm',
+            label='API Key LLM', description='',
+            is_secret=True
+        ))
+        db.commit()
+
+    res = client.patch('/api/admin/config', json={'llm.api_key': None})
+    assert res.status_code == 200
+
+    with get_session() as db:
+        entry = db.get(SystemConfigModel, 'llm.api_key')
+        assert entry.value == 'sk-original'
