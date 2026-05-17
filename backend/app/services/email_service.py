@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 
 from flask import current_app
 
-from ..utils.locale import t
+from ..utils.locale import t, get_locale
 
 logger = logging.getLogger('mirofish.email')
 
@@ -34,8 +34,9 @@ def _build_invitation_html(name: str, accept_url: str, ttl_hours: int) -> str:
     safe_name = _escape_html(name)
     safe_url = _escape_html(accept_url)
     hours = str(ttl_hours)
+    lang = get_locale()
     return f"""<!DOCTYPE html>
-<html lang="ca">
+<html lang="{lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -131,8 +132,9 @@ def _build_reset_html(email: str, reset_url: str, ttl_hours: int) -> str:
     safe_email = _escape_html(email)
     safe_url = _escape_html(reset_url)
     hours = str(ttl_hours)
+    lang = get_locale()
     return f"""<!DOCTYPE html>
-<html lang="ca">
+<html lang="{lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -222,7 +224,7 @@ def _build_reset_plain(email: str, reset_url: str, ttl_hours: int) -> str:
 # ── Funcions públiques ─────────────────────────────────────────────────────
 
 def send_invitation_email(to_email: str, to_name: str, accept_url: str) -> bool:
-    ttl = current_app.config['ACS_INVITATION_TTL_HOURS']
+    ttl = current_app.config.get('ACS_INVITATION_TTL_HOURS', 48)
     subject = t('email.invitation.subject')
     html = _build_invitation_html(to_name, accept_url, ttl)
     plain = _build_invitation_plain(to_name, accept_url, ttl)
