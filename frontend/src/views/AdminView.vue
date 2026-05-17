@@ -13,6 +13,9 @@
         <router-link to="/admin/users"      class="tab" :class="{ active: tab === 'users' }">
           {{ $t('admin.users') }}
         </router-link>
+        <router-link to="/admin/projects"   class="tab" :class="{ active: tab === 'projects' }">
+          {{ $t('admin.projects') }}
+        </router-link>
         <router-link to="/admin/config"     class="tab" :class="{ active: tab === 'config' }">
           {{ $t('admin.config') }}
         </router-link>
@@ -80,6 +83,40 @@
         </table>
         <div v-else class="empty-state">{{ $t('admin.noUsers') }}</div>
         <div v-if="deleteSuccess" class="success-msg">{{ $t('admin.deleteUserSuccess') }}</div>
+      </div>
+
+      <!-- Tab: Projectes -->
+      <div v-if="tab === 'projects'" class="tab-content">
+        <div class="tab-header">
+          <h2 class="section-title">{{ $t('admin.projects') }}</h2>
+        </div>
+        <table class="data-table" v-if="projects.length">
+          <thead>
+            <tr>
+              <th>{{ $t('admin.project') }}</th>
+              <th>{{ $t('admin.owner') }}</th>
+              <th>{{ $t('admin.simulations') }}</th>
+              <th>{{ $t('admin.status') }}</th>
+              <th>{{ $t('admin.created') }}</th>
+              <th>{{ $t('admin.actions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="proj in projects" :key="proj.project_id">
+              <td>{{ proj.name }}</td>
+              <td class="mono">{{ proj.owner_email || '—' }}</td>
+              <td class="mono">{{ proj.simulation_count }}</td>
+              <td><span class="status-badge" :class="proj.status">{{ proj.status }}</span></td>
+              <td class="mono">{{ formatDate(proj.created_at) }}</td>
+              <td>
+                <button class="action-btn" @click="openProjectDetail(proj.project_id)">
+                  {{ $t('admin.detail') }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else class="empty-state">{{ $t('admin.noProjects') }}</div>
       </div>
 
       <!-- Tab: Configuració -->
@@ -196,11 +233,18 @@ const configSaved = ref(false)
 
 const executions = ref([])
 
+const projects = ref([])
+const projectDetail = ref(null)
+const projectDetailLoading = ref(false)
+const projectDetailError = ref('')
+const showProjectModal = ref(false)
+
 onMounted(loadTab)
 watch(() => props.tab, loadTab)
 
 async function loadTab() {
   if (props.tab === 'users') await loadUsers()
+  if (props.tab === 'projects') await loadProjects()
   if (props.tab === 'config') await loadConfig()
   if (props.tab === 'executions') await loadExecutions()
 }
@@ -227,6 +271,28 @@ async function loadExecutions() {
     const res = await service.get('/api/admin/executions')
     executions.value = res.data || []
   } catch { /* silent */ }
+}
+
+async function loadProjects() {
+  try {
+    const res = await service.get('/api/admin/projects')
+    projects.value = res.data?.data || []
+  } catch { /* silent */ }
+}
+
+async function openProjectDetail(projectId) {
+  projectDetail.value = null
+  projectDetailError.value = ''
+  projectDetailLoading.value = true
+  showProjectModal.value = true
+  try {
+    const res = await service.get(`/api/admin/projects/${projectId}`)
+    projectDetail.value = res.data?.data || null
+  } catch {
+    projectDetailError.value = t('common.unknownError')
+  } finally {
+    projectDetailLoading.value = false
+  }
 }
 
 async function submitInvite() {
