@@ -175,6 +175,127 @@
     </div>
   </div>
 
+<!-- Modal de detall de projecte (admin) -->
+<div v-if="showProjectModal" class="modal-overlay">
+  <div class="modal-box project-detail-modal">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ $t('admin.projectDetail') }}</h3>
+      <button class="modal-close-btn" @click="showProjectModal = false">×</button>
+    </div>
+
+    <div v-if="projectDetailLoading" class="empty-state">{{ $t('common.loading') }}</div>
+    <div v-else-if="projectDetailError" class="error-msg">{{ projectDetailError }}</div>
+    <template v-else-if="projectDetail">
+      <!-- Capçalera projecte -->
+      <div class="detail-section">
+        <div class="detail-row">
+          <span class="detail-label">{{ $t('admin.projectId') }}</span>
+          <span class="mono detail-value">{{ projectDetail.project_id }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">{{ $t('admin.owner') }}</span>
+          <span class="mono detail-value">{{ projectDetail.owner_email || '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">{{ $t('admin.status') }}</span>
+          <span class="status-badge" :class="projectDetail.status">{{ projectDetail.status }}</span>
+        </div>
+      </div>
+
+      <!-- Grafs -->
+      <div class="detail-section">
+        <h4 class="detail-section-title">{{ $t('admin.graphs') }}</h4>
+        <table class="data-table" v-if="projectDetail.graphs.length">
+          <thead>
+            <tr>
+              <th>{{ $t('admin.graphId') }}</th>
+              <th>{{ $t('admin.externalId') }}</th>
+              <th>{{ $t('admin.backend') }}</th>
+              <th>{{ $t('admin.status') }}</th>
+              <th>{{ $t('admin.nodeCount') }}</th>
+              <th>{{ $t('admin.edgeCount') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="g in projectDetail.graphs" :key="g.graph_id">
+              <td class="mono">{{ g.graph_id }}</td>
+              <td class="mono">{{ g.external_id || '—' }}</td>
+              <td class="mono">{{ g.backend }}</td>
+              <td><span class="status-badge" :class="g.status">{{ g.status }}</span></td>
+              <td class="mono">{{ g.node_count ?? '—' }}</td>
+              <td class="mono">{{ g.edge_count ?? '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else class="empty-state-sm">—</div>
+      </div>
+
+      <!-- Simulacions -->
+      <div class="detail-section">
+        <h4 class="detail-section-title">{{ $t('admin.simulations') }}</h4>
+        <div v-if="simDeleteSuccess" class="success-msg">{{ $t('admin.deleteSimulationSuccess') }}</div>
+        <table class="data-table" v-if="projectDetail.simulations.length">
+          <thead>
+            <tr>
+              <th>{{ $t('admin.simulationId') }}</th>
+              <th>{{ $t('admin.graphId') }}</th>
+              <th>{{ $t('admin.status') }}</th>
+              <th>{{ $t('admin.platform') }}</th>
+              <th>{{ $t('admin.rounds') }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="s in projectDetail.simulations" :key="s.simulation_id">
+              <td class="mono">{{ s.simulation_id }}</td>
+              <td class="mono">{{ s.graph_id || '—' }}</td>
+              <td><span class="status-badge" :class="s.status">{{ s.status }}</span></td>
+              <td class="mono">{{ s.platform }}</td>
+              <td class="mono">{{ s.rounds_completed }}/{{ s.rounds_total || '?' }}</td>
+              <td>
+                <template v-if="simDeleteConfirm === s.simulation_id">
+                  <span class="confirm-inline">
+                    {{ $t('admin.deleteSimulationConfirm') }}
+                    <button class="action-btn danger" @click="deleteSimulation(s.simulation_id)">
+                      {{ $t('admin.confirmYes') }}
+                    </button>
+                    <button class="action-btn" @click="simDeleteConfirm = null">
+                      {{ $t('admin.confirmNo') }}
+                    </button>
+                  </span>
+                </template>
+                <button v-else class="action-btn danger"
+                        @click="simDeleteConfirm = s.simulation_id">
+                  {{ $t('admin.deleteSimulation') }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else class="empty-state-sm">—</div>
+      </div>
+
+      <!-- Eliminar projecte -->
+      <div class="detail-section danger-zone">
+        <h4 class="detail-section-title danger-title">{{ $t('admin.deleteProject') }}</h4>
+        <p class="danger-hint">{{ $t('admin.deleteProjectConfirmLabel') }}: <strong>{{ projectDetail.name }}</strong></p>
+        <div class="form-row">
+          <input v-model="projectDeleteConfirmInput" class="field-input"
+                 :placeholder="projectDetail.name" />
+          <button class="start-btn danger"
+                  :disabled="projectDeleteConfirmInput !== projectDetail.name || projectDeleteLoading"
+                  @click="deleteAdminProject">
+            {{ projectDeleteLoading ? $t('common.loading') : $t('admin.deleteProject') }}
+          </button>
+        </div>
+        <div v-if="projectDeleteError" class="error-msg">{{ projectDeleteError }}</div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<div v-if="projectDeleteSuccess" class="toast-success">{{ $t('admin.deleteProjectSuccess') }}</div>
+
 <!-- Modal d'esborrament d'usuari -->
 <div v-if="deleteModal.open" class="modal-overlay" @click.self="closeDeleteModal" @keydown.esc.window="closeDeleteModal">
   <div class="modal-box">
@@ -239,6 +360,13 @@ const projectDetailLoading = ref(false)
 const projectDetailError = ref('')
 const showProjectModal = ref(false)
 
+const simDeleteConfirm = ref(null)   // simulation_id waiting for confirmation
+const simDeleteSuccess = ref('')
+const projectDeleteConfirmInput = ref('')
+const projectDeleteSuccess = ref(false)
+const projectDeleteError = ref('')
+const projectDeleteLoading = ref(false)
+
 onMounted(loadTab)
 watch(() => props.tab, loadTab)
 
@@ -278,6 +406,36 @@ async function loadProjects() {
     const res = await service.get('/api/admin/projects')
     projects.value = res.data?.data || []
   } catch { /* silent */ }
+}
+
+async function deleteSimulation(simulationId) {
+  try {
+    await service.delete(`/api/admin/simulations/${simulationId}`)
+    simDeleteConfirm.value = null
+    simDeleteSuccess.value = simulationId
+    setTimeout(() => { simDeleteSuccess.value = '' }, 2000)
+    const res = await service.get(`/api/admin/projects/${projectDetail.value.project_id}`)
+    projectDetail.value = res.data?.data || projectDetail.value
+  } catch { /* silent */ }
+}
+
+async function deleteAdminProject() {
+  if (projectDeleteConfirmInput.value !== projectDetail.value?.name) return
+  projectDeleteLoading.value = true
+  projectDeleteError.value = ''
+  try {
+    await service.delete(`/api/admin/projects/${projectDetail.value.project_id}`)
+    showProjectModal.value = false
+    projectDetail.value = null
+    projectDeleteConfirmInput.value = ''
+    projectDeleteSuccess.value = true
+    setTimeout(() => { projectDeleteSuccess.value = false }, 3000)
+    await loadProjects()
+  } catch (e) {
+    projectDeleteError.value = e.response?.data?.error || t('common.unknownError')
+  } finally {
+    projectDeleteLoading.value = false
+  }
 }
 
 async function openProjectDetail(projectId) {
@@ -429,4 +587,20 @@ function formatDate(iso) {
 .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
 .start-btn.danger { background: #dc2626; }
 .start-btn.danger:hover:not(:disabled) { background: #b91c1c; }
+.project-detail-modal { max-width: 860px; width: 95%; max-height: 90vh; overflow-y: auto; gap: 0; padding: 0; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 24px 32px 16px; border-bottom: 1px solid #e5e5e5; }
+.modal-close-btn { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #666; padding: 0 4px; line-height: 1; }
+.modal-close-btn:hover { color: #000; }
+.detail-section { padding: 20px 32px; border-bottom: 1px solid #f0f0f0; }
+.detail-section:last-child { border-bottom: none; }
+.detail-section-title { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #666; margin: 0 0 12px; }
+.detail-row { display: flex; gap: 16px; align-items: center; margin-bottom: 8px; }
+.detail-label { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #666; min-width: 110px; }
+.detail-value { font-size: 0.85rem; }
+.empty-state-sm { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #bbb; padding: 8px 0; }
+.danger-zone { background: #fafafa; }
+.danger-title { color: #dc2626; }
+.danger-hint { font-size: 0.85rem; color: #666; margin: 0 0 12px; }
+.confirm-inline { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+.toast-success { position: fixed; bottom: 24px; right: 24px; background: #22c55e; color: #fff; padding: 10px 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; z-index: 200; }
 </style>
