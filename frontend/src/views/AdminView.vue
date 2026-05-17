@@ -297,7 +297,7 @@
 <div v-if="projectDeleteSuccess" class="toast-success">{{ $t('admin.deleteProjectSuccess') }}</div>
 
 <!-- Modal d'esborrament d'usuari -->
-<div v-if="deleteModal.open" class="modal-overlay" @click.self="closeDeleteModal" @keydown.esc.window="closeDeleteModal">
+<div v-if="deleteModal.open" class="modal-overlay">
   <div class="modal-box">
     <h3 class="modal-title">{{ $t('admin.deleteUserTitle') }}</h3>
     <p class="modal-warning">
