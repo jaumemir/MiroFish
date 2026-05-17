@@ -115,3 +115,26 @@ def test_delete_admin_simulation(client, in_memory_db):
 def test_delete_admin_simulation_not_found(client, in_memory_db):
     res = client.delete('/api/admin/simulations/ghost')
     assert res.status_code == 404
+
+
+def test_delete_admin_project_with_external_graph(client, in_memory_db):
+    """Verifica que delete_admin_project crida delete_graph per a grafs amb external_id."""
+    from unittest.mock import patch, MagicMock
+    from backend.app.db import get_session
+    from backend.app.models.db_models import ProjectModel, GraphModel
+    with get_session() as db:
+        p = ProjectModel(id='p2', name='ExtGraph', status='created')
+        g = GraphModel(id='g2', project_id='p2', backend='zep', status='ready',
+                       external_id='ext-abc-123')
+        db.add_all([p, g])
+        db.commit()
+
+    with patch('backend.app.services.graph_builder.GraphBuilderService') as MockGBS:
+        mock_instance = MagicMock()
+        MockGBS.return_value = mock_instance
+        res = client.delete('/api/admin/projects/p2')
+
+    assert res.status_code == 200
+    mock_instance.delete_graph.assert_called_once_with('ext-abc-123')
+    res2 = client.get('/api/admin/projects/p2')
+    assert res2.status_code == 404
