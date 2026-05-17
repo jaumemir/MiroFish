@@ -19,6 +19,7 @@ from datetime import datetime
 from enum import Enum
 
 from ..config import Config
+from ..config_db import get_config
 from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
 from ..utils.locale import get_language_instruction, t
@@ -914,7 +915,18 @@ class ReportAgent:
         
         self.llm = llm_client or LLMClient()
         self.zep_tools = zep_tools or ZepToolsService()
-        
+
+        # Read from DB with fallback to class constants
+        self.max_tool_calls_per_section = get_config(
+            'report.max_tool_calls', Config.REPORT_AGENT_MAX_TOOL_CALLS
+        ) or self.MAX_TOOL_CALLS_PER_SECTION
+        self.max_reflection_rounds = get_config(
+            'report.max_reflection_rounds', Config.REPORT_AGENT_MAX_REFLECTION_ROUNDS
+        ) or self.MAX_REFLECTION_ROUNDS
+        self.report_temperature = get_config(
+            'report.temperature', Config.REPORT_AGENT_TEMPERATURE
+        )
+
         # Tool definitions
         self.tools = self._define_tools()
 
@@ -1314,13 +1326,13 @@ class ReportAgent:
                 progress_callback(
                     "generating", 
                     int((iteration / max_iterations) * 100),
-                    t('progress.deepSearchAndWrite', current=tool_calls_count, max=self.MAX_TOOL_CALLS_PER_SECTION)
+                    t('progress.deepSearchAndWrite', current=tool_calls_count, max=self.max_tool_calls_per_section)
                 )
             
             # Call the LLM
             response = self.llm.chat(
                 messages=messages,
-                temperature=0.5,
+                temperature=self.report_temperature,
                 max_tokens=4096
             )
 
@@ -1420,13 +1432,13 @@ class ReportAgent:
             # ── Case 2: LLM attempted a tool call ──
             if has_tool_calls:
                 # Tool quota exhausted → notify clearly and require Final Answer output
-                if tool_calls_count >= self.MAX_TOOL_CALLS_PER_SECTION:
+                if tool_calls_count >= self.max_tool_calls_per_section:
                     messages.append({"role": "assistant", "content": ReportAgent._strip_fake_tool_results(response)})
                     messages.append({
                         "role": "user",
                         "content": REACT_TOOL_LIMIT_MSG.format(
                             tool_calls_count=tool_calls_count,
-                            max_tool_calls=self.MAX_TOOL_CALLS_PER_SECTION,
+                            max_tool_calls=self.max_tool_calls_per_section,
                         ),
                     })
                     continue
@@ -1466,7 +1478,7 @@ class ReportAgent:
                 # Build the unused-tools hint
                 unused_tools = all_tools - used_tools
                 unused_hint = ""
-                if unused_tools and tool_calls_count < self.MAX_TOOL_CALLS_PER_SECTION:
+                if unused_tools and tool_calls_count < self.max_tool_calls_per_section:
                     unused_hint = REACT_UNUSED_TOOLS_HINT.format(unused_list=", ".join(unused_tools))
 
                 messages.append({"role": "assistant", "content": ReportAgent._strip_fake_tool_results(response)})
@@ -1476,7 +1488,7 @@ class ReportAgent:
                         tool_name=call["name"],
                         result=result,
                         tool_calls_count=tool_calls_count,
-                        max_tool_calls=self.MAX_TOOL_CALLS_PER_SECTION,
+                        max_tool_calls=self.max_tool_calls_per_section,
                         used_tools_str=", ".join(used_tools),
                         unused_hint=unused_hint,
                     ),
@@ -1518,10 +1530,10 @@ class ReportAgent:
         # Maximum iterations reached; force content generation
         logger.warning(t('report.sectionMaxIter', title=section.title))
         messages.append({"role": "user", "content": REACT_FORCE_FINAL_MSG})
-        
+
         response = self.llm.chat(
             messages=messages,
-            temperature=0.5,
+            temperature=self.report_temperature,
             max_tokens=4096
         )
 
