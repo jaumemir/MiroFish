@@ -107,6 +107,14 @@
           </label>
         </div>
         </fieldset>
+        <!-- Botó tornar al pas anterior (quan no running) -->
+        <button
+          v-if="phase !== 1"
+          class="action-btn back"
+          @click="$emit('go-back')"
+        >
+          {{ $t('step3.backToPrevStep') }}
+        </button>
         <!-- Botó atura (quan s'executa) -->
         <button
           v-if="phase === 1"
@@ -1111,6 +1119,17 @@ fieldset:disabled * {
 
 .action-btn.primary:hover:not(:disabled) {
   background: #333;
+}
+
+.action-btn.back {
+  background: #fff;
+  color: #555;
+  border: 1px solid #e0e0e0;
+}
+
+.action-btn.back:hover:not(:disabled) {
+  background: #f5f5f5;
+  border-color: #bbb;
 }
 
 .action-btn.stop {
