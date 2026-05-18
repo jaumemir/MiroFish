@@ -1022,8 +1022,8 @@ def _get_report_id_for_simulation(simulation_id: str) -> str:
     """
     Get the most recent report_id associated with a simulation.
 
-    Scans the reports directory for reports matching simulation_id,
-    returning the most recent one (sorted by created_at) if multiple exist.
+    Queries the DB first (works in Azure where local filesystem is ephemeral),
+    then falls back to scanning the local reports directory.
 
     Args:
         simulation_id: simulation ID
@@ -1031,44 +1031,51 @@ def _get_report_id_for_simulation(simulation_id: str) -> str:
     Returns:
         report_id or None
     """
+    # BD primer: font de veritat persistent (funciona a Azure Blob)
+    try:
+        from ..models.db_models import ReportModel
+        from ..db import get_session
+        with get_session() as db:
+            rows = (
+                db.query(ReportModel)
+                .filter(ReportModel.simulation_id == simulation_id)
+                .order_by(ReportModel.created_at.desc())
+                .all()
+            )
+            if rows:
+                return rows[0].id
+    except Exception as e:
+        logger.warning(f"DB lookup for report failed (simulation {simulation_id}): {e}")
+
+    # Fallback: filesystem (local o Azure Files share muntat via UPLOAD_FOLDER)
     import json
-    from datetime import datetime
-    
-    # reports directory path: backend/uploads/reports
-    # __file__ is app/api/simulation.py — go up two levels to backend/
-    reports_dir = os.path.join(os.path.dirname(__file__), '../../uploads/reports')
+    from ..config import Config
+    reports_dir = os.path.join(Config.UPLOAD_FOLDER, 'reports')
     if not os.path.exists(reports_dir):
         return None
-    
+
     matching_reports = []
-    
     try:
         for report_folder in os.listdir(reports_dir):
             report_path = os.path.join(reports_dir, report_folder)
             if not os.path.isdir(report_path):
                 continue
-            
             meta_file = os.path.join(report_path, "meta.json")
             if not os.path.exists(meta_file):
                 continue
-            
             try:
                 with open(meta_file, 'r', encoding='utf-8') as f:
                     meta = json.load(f)
-                
                 if meta.get("simulation_id") == simulation_id:
                     matching_reports.append({
                         "report_id": meta.get("report_id"),
                         "created_at": meta.get("created_at", ""),
-                        "status": meta.get("status", "")
                     })
             except Exception:
                 continue
-        
+
         if not matching_reports:
             return None
-        
-        # Sort by created_at descending, return the most recent
         matching_reports.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         return matching_reports[0].get("report_id")
 
@@ -1818,6 +1825,17 @@ def start_simulation():
                 }), 400
             
             logger.info(f"Graph memory update enabled: simulation_id={simulation_id}, graph_id={graph_id}")
+
+        # Delete previous simulation graph if force-restarting
+        if force and state.graph_id_simulation:
+            try:
+                from ..graph import get_graph_backend as _get_gb
+                _get_gb().delete_graph(state.graph_id_simulation)
+                logger.info(f"Deleted old simulation graph: {state.graph_id_simulation}")
+            except Exception as _del_err:
+                logger.warning(f"Could not delete old simulation graph {state.graph_id_simulation}: {_del_err}")
+            state.graph_id_simulation = None
+            manager._save_simulation_state(state)
 
         # Clone graph for per-simulation isolation
         graph_id_simulation = None
