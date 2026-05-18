@@ -242,7 +242,8 @@
     "resumingSim": "Reprenent la simulació...",
     "simResumed": "Simulació represa",
     "resumeFailed": "Error en reprendre: {error}",
-    "resumeException": "Excepció en reprendre: {error}"
+    "resumeException": "Excepció en reprendre: {error}",
+    "backToPrevStep": "← Pas anterior"
   },
   "step4": {
     "generatingSection": "Generant {title}...",

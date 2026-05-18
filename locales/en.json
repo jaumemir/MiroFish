@@ -242,7 +242,8 @@
     "resumingSim": "Resuming simulation...",
     "simResumed": "Simulation resumed",
     "resumeFailed": "Resume failed: {error}",
-    "resumeException": "Resume error: {error}"
+    "resumeException": "Resume error: {error}",
+    "backToPrevStep": "← Previous step"
   },
   "step4": {
     "generatingSection": "Generating {title}...",

@@ -242,7 +242,8 @@
     "resumingSim": "Reanudando simulación...",
     "simResumed": "Simulación reanudada",
     "resumeFailed": "Error al reanudar: {error}",
-    "resumeException": "Excepción al reanudar: {error}"
+    "resumeException": "Excepción al reanudar: {error}",
+    "backToPrevStep": "← Paso anterior"
   },
   "step4": {
     "generatingSection": "Generando {title}...",
