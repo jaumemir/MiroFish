@@ -54,7 +54,7 @@ import GraphPanel from '../components/GraphPanel.vue'
 import Step3Simulation from '../components/Step3Simulation.vue'
 import AppHeader from '../components/AppHeader.vue'
 import { getProject, getGraphData } from '../api/graph'
-import { getSimulation, getSimulationConfig, stopSimulation, closeSimulationEnv, getEnvStatus } from '../api/simulation'
+import { getSimulation, getSimulationConfig } from '../api/simulation'
 import { useI18n } from 'vue-i18n'
 import { useBackTo } from '../composables/useBackTo'
 
@@ -132,51 +132,8 @@ const toggleMaximize = (target) => {
   }
 }
 
-const handleGoBack = async () => {
-  // Before returning to Step 2, shut down any running simulation
-  addLog(t('log.preparingGoBack'))
-  
-  // Stop polling
+const handleGoBack = () => {
   stopGraphRefresh()
-  
-  try {
-    // First try graceful shutdown of simulation environment
-    const envStatusRes = await getEnvStatus({ simulation_id: currentSimulationId.value })
-    
-    if (envStatusRes.success && envStatusRes.data?.env_alive) {
-      addLog(t('log.closingSimEnv'))
-      try {
-        await closeSimulationEnv({ 
-          simulation_id: currentSimulationId.value,
-          timeout: 10
-        })
-        addLog(t('log.simEnvClosed'))
-      } catch (closeErr) {
-        addLog(t('log.closeSimEnvFailed'))
-        try {
-          await stopSimulation({ simulation_id: currentSimulationId.value })
-          addLog(t('log.simForceStopSuccess'))
-        } catch (stopErr) {
-          addLog(t('log.forceStopFailed', { error: stopErr.message }))
-        }
-      }
-    } else {
-      // Environment not running; check whether process needs to be stopped
-      if (isSimulating.value) {
-        addLog(t('log.stoppingSimProcess'))
-        try {
-          await stopSimulation({ simulation_id: currentSimulationId.value })
-          addLog(t('log.simStopped'))
-        } catch (err) {
-          addLog(t('log.stopSimFailed', { error: err.message }))
-        }
-      }
-    }
-  } catch (err) {
-    addLog(t('log.checkStatusFailed', { error: err.message }))
-  }
-  
-  // Return to Step 2 (environment setup)
   router.push({ name: 'Simulation', params: { simulationId: currentSimulationId.value } })
 }
 
