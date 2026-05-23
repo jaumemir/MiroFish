@@ -1313,7 +1313,8 @@ watch(() => props.simulationId, (newId) => {
   display: flex;
   flex-direction: column;
   background: #FFFFFF;
-  overflow: hidden;
+  overflow: visible;
+  min-width: 0;
 }
 
 /* Action Bar - Professional Design */

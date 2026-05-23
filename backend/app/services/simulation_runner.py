@@ -1781,21 +1781,20 @@ class SimulationRunner:
             if _llm and prompt_question:
                 try:
                     posts_block = "\n\n".join(all_posts[:15]) if all_posts else "(cap activitat registrada)"
-                    system_prompt = (
-                        f"Ets un assistent que simula les respostes de {agent_name}, "
-                        f"un participant d'una simulació de xarxes socials.\n\n"
-                        f"Descripció del participant:\n{persona}\n\n"
-                        f"Missatges publicats durant la simulació:\n{posts_block}\n\n"
-                        f"Genera la resposta que donaria {agent_name} a la pregunta de l'entrevistador, "
-                        "mantenint el seu punt de vista, to i posicionament tal com es reflecteix "
-                        "en els seus missatges i descripció. La resposta ha de ser natural i coherent "
-                        "amb el perfil del participant."
+                    user_message = (
+                        f"Participant name: {agent_name}\n"
+                        f"Profile: {persona}\n\n"
+                        f"Recent social media posts by this participant:\n{posts_block}\n\n"
+                        f"Question: {prompt_question}\n\n"
+                        f"Based on the profile and posts above, write how {agent_name} would likely "
+                        "answer this question. Match their writing style, opinions and tone as shown "
+                        "in their posts."
                     )
                     _resp = _llm.chat.completions.create(
                         model=_llm_model,
                         messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": prompt_question},
+                            {"role": "system", "content": "You are a helpful assistant that analyzes social media data and summarizes user perspectives."},
+                            {"role": "user", "content": user_message},
                         ],
                         max_completion_tokens=600,
                         temperature=0.7,
