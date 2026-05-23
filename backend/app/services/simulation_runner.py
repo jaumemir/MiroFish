@@ -1696,16 +1696,51 @@ class SimulationRunner:
         interviews: List[Dict[str, Any]],
         platform: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Build synthetic interview responses from DB post history when the OASIS env is closed.
+        """Build LLM-generated interview responses when the OASIS env is closed.
 
-        Reads posts from twitter_simulation.db and reddit_simulation.db (table `post`,
-        column `content`) and assembles a text response per agent per platform.
-        Returns the same structure that the live IPC path returns so callers are unaffected.
+        For each agent: loads their persona from reddit_profiles.json and their
+        recent posts from the simulation DB, then calls the LLM to answer the
+        interview question in character.  Falls back to a plain-text summary if
+        the LLM call fails.
         """
         import sqlite3
+        import json as _json
         from datetime import datetime, timezone
+        from openai import OpenAI
 
         results: Dict[str, Any] = {}
+
+        # --- Load agent profiles (reddit_profiles.json) ---
+        profiles_by_id: Dict[int, Dict] = {}
+        profiles_path = os.path.join(sim_dir, "reddit_profiles.json")
+        if os.path.exists(profiles_path):
+            try:
+                with open(profiles_path, 'r', encoding='utf-8') as _f:
+                    _profiles = _json.load(_f)
+                if isinstance(_profiles, list):
+                    for p in _profiles:
+                        uid = p.get("user_id")
+                        if uid is not None:
+                            profiles_by_id[uid] = p
+            except Exception as e:
+                logger.warning(f"Offline interview: could not load profiles: {e}")
+
+        # --- LLM client (standard LLM) ---
+        from ..config import Config as _Cfg
+        from ..utils.llm_client import parse_azure_url as _parse_azure_url
+        _raw_url = _Cfg.LLM_BASE_URL or ""
+        _clean_url, _default_query = _parse_azure_url(_raw_url)
+        try:
+            _llm = OpenAI(
+                api_key=_Cfg.LLM_API_KEY,
+                base_url=_clean_url or None,
+                default_query=_default_query if _default_query else None,
+            )
+            _llm_model = _Cfg.LLM_MODEL_NAME
+        except Exception as _e:
+            logger.warning(f"Offline interview: LLM client init failed: {_e}")
+            _llm = None
+            _llm_model = None
 
         platforms_to_check = []
         if platform in (None, "twitter"):
@@ -1715,35 +1750,69 @@ class SimulationRunner:
 
         for interview in interviews:
             agent_id = interview.get("agent_id")
+            prompt_question = interview.get("prompt", "")
             if agent_id is None:
                 continue
 
-            for plat_name, db_path in platforms_to_check:
+            # Gather posts from all platforms for context (use the first DB that exists)
+            all_posts: List[str] = []
+            for _, db_path in platforms_to_check:
+                if not os.path.exists(db_path):
+                    continue
+                try:
+                    conn = sqlite3.connect(db_path)
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "SELECT content FROM post WHERE user_id = ? AND content != '' ORDER BY created_at DESC LIMIT 15",
+                        (agent_id,)
+                    )
+                    rows = cursor.fetchall()
+                    conn.close()
+                    all_posts.extend([r[0] for r in rows if r[0]])
+                except Exception as e:
+                    logger.warning(f"Offline interview DB read failed (agent {agent_id}): {e}")
+
+            profile = profiles_by_id.get(agent_id, {})
+            agent_name = profile.get("name") or profile.get("username") or f"Agent_{agent_id}"
+            persona = profile.get("persona") or profile.get("bio") or ""
+
+            # --- Generate LLM response ---
+            response_text = None
+            if _llm and prompt_question:
+                try:
+                    posts_block = "\n\n".join(all_posts[:15]) if all_posts else "(cap activitat registrada)"
+                    system_prompt = (
+                        f"Ets {agent_name}. Aquí tens la teva descripció de persona:\n{persona}\n\n"
+                        f"Durant una simulació de xarxes socials vas escriure els següents missatges:\n{posts_block}\n\n"
+                        "Respon la pregunta de l'entrevistador mantenint el teu punt de vista, "
+                        "to i posicionament tal com es reflecteix en els teus missatges. "
+                        "Respon en primera persona, de forma natural i coherent amb el teu perfil."
+                    )
+                    _resp = _llm.chat.completions.create(
+                        model=_llm_model,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": prompt_question},
+                        ],
+                        max_tokens=600,
+                        temperature=0.7,
+                    )
+                    response_text = _resp.choices[0].message.content.strip()
+                except Exception as e:
+                    logger.warning(f"Offline interview LLM call failed (agent {agent_id}): {e}")
+
+            # Fallback: return posts as-is if LLM failed
+            if not response_text:
+                if all_posts:
+                    response_text = t('api.offlineInterviewBased', posts="\n\n".join(all_posts[:10]))
+                else:
+                    response_text = t('api.offlineInterviewNoActivity')
+
+            for plat_name, _ in platforms_to_check:
                 key = f"{plat_name}_{agent_id}"
-                response_text = None
-
-                if os.path.exists(db_path):
-                    try:
-                        conn = sqlite3.connect(db_path)
-                        cursor = conn.cursor()
-                        cursor.execute(
-                            "SELECT content FROM post WHERE user_id = ? AND content != '' ORDER BY created_at DESC LIMIT 10",
-                            (agent_id,)
-                        )
-                        rows = cursor.fetchall()
-                        conn.close()
-                        if rows:
-                            post_texts = [r[0] for r in rows if r[0]]
-                            response_text = t(
-                                'api.offlineInterviewBased',
-                                posts="\n\n".join(post_texts)
-                            )
-                    except Exception as e:
-                        logger.warning(f"Offline interview DB read failed ({plat_name}, agent {agent_id}): {e}")
-
                 results[key] = {
                     "agent_id": agent_id,
-                    "response": response_text or t('api.offlineInterviewNoActivity'),
+                    "response": response_text,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "platform": plat_name,
                     "offline": True,

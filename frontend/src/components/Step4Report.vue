@@ -128,6 +128,10 @@
           </div>
 
           <!-- Download Button -->
+          <button v-if="isComplete" class="retry-btn retry-btn--outline" @click="retryReport" :disabled="!simulationId">
+            ↺ {{ $t('projectDetail.regenerateReport') }}
+          </button>
+
           <div v-if="isComplete" class="download-wrapper">
             <button class="download-toggle-btn" @click.stop="showDownloadMenu = !showDownloadMenu">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
@@ -459,9 +463,11 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getAgentLog, getConsoleLog, generateReport, getReport } from '../api/report'
 import service from '../api'
+import { useBackTo } from '../composables/useBackTo'
 
 const router = useRouter()
 const { t } = useI18n()
+const { pushWithBackTo } = useBackTo('Home')
 
 const props = defineProps({
   reportId: String,
@@ -479,7 +485,7 @@ const handleClickOutside = (e) => {
 // Navigation
 const goToInteraction = () => {
   if (props.reportId) {
-    router.push({ name: 'Interaction', params: { reportId: props.reportId } })
+    pushWithBackTo({ name: 'Interaction', params: { reportId: props.reportId } })
   }
 }
 
@@ -1821,7 +1827,7 @@ const retryReport = async () => {
       force_regenerate: true
     })
     if (res.success && res.data?.report_id) {
-      router.push({ name: 'Report', params: { reportId: res.data.report_id } })
+      pushWithBackTo({ name: 'Report', params: { reportId: res.data.report_id } })
     }
   } catch (err) {
     reportFailed.value = true
@@ -3607,6 +3613,18 @@ watch(() => props.reportId, (newId) => {
 .retry-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.retry-btn--outline {
+  background: transparent;
+  color: #555;
+  border: 1px solid #CCC;
+}
+
+.retry-btn--outline:hover:not(:disabled) {
+  background: #F5F5F5;
+  border-color: #999;
+  color: #000;
 }
 
 .next-step-btn {

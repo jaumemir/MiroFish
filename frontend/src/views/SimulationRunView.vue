@@ -134,7 +134,11 @@ const toggleMaximize = (target) => {
 
 const handleGoBack = () => {
   stopGraphRefresh()
-  router.push({ name: 'Simulation', params: { simulationId: currentSimulationId.value } })
+  router.push({
+    name: 'Simulation',
+    params: { simulationId: currentSimulationId.value },
+    state: { backTo: history.state?.backTo },
+  })
 }
 
 const handleNextStep = () => {

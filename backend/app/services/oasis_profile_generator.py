@@ -194,17 +194,8 @@ class OasisProfileGenerator:
         "Canada", "Australia", "Brazil", "India", "South Korea"
     ]
     
-    # Individual entity types (require a concrete persona)
-    INDIVIDUAL_ENTITY_TYPES = [
-        "student", "alumni", "professor", "person", "publicfigure", 
-        "expert", "faculty", "official", "journalist", "activist"
-    ]
-    
-    # Group/institution entity types (require a representative account persona)
-    GROUP_ENTITY_TYPES = [
-        "university", "governmentagency", "organization", "ngo", 
-        "mediaoutlet", "company", "institution", "group", "community"
-    ]
+    # Cache: entity_type (lowercase) → "individual" | "group"
+    _entity_type_category_cache: Dict[str, str] = {}
     
     def __init__(
         self, 
@@ -226,6 +217,17 @@ class OasisProfileGenerator:
             api_key=self.api_key,
             base_url=self.base_url,
             default_query=_default_query if _default_query else None
+        )
+
+        # Small/fast LLM for lightweight classification tasks
+        small_key = Config.LLM_SMALL_API_KEY or self.api_key
+        small_url_raw = Config.LLM_SMALL_BASE_URL or raw_url
+        self.small_model = Config.LLM_SMALL_MODEL_NAME or self.model_name
+        small_base_url, small_query = parse_azure_url(small_url_raw)
+        self.small_client = OpenAI(
+            api_key=small_key,
+            base_url=small_base_url,
+            default_query=small_query if small_query else None,
         )
 
         # Graph retrieval client — only initialise Zep when it is the active backend
@@ -571,13 +573,43 @@ class OasisProfileGenerator:
         
         return "\n\n".join(context_parts)
     
+    def _classify_entity_type(self, entity_type: str) -> str:
+        """Return 'individual' or 'group' for an entity type using LLM_SMALL (cached per type)."""
+        key = entity_type.lower().strip()
+        if key in self._entity_type_category_cache:
+            return self._entity_type_category_cache[key]
+
+        prompt = (
+            f"Classify the following ontology entity type as either 'individual' (a single person, "
+            f"human being, or named individual) or 'group' (an organisation, institution, department, "
+            f"company, collective, or non-human entity).\n\n"
+            f"Entity type: {entity_type}\n\n"
+            f"Reply with exactly one word: individual or group."
+        )
+        try:
+            response = self.small_client.chat.completions.create(
+                model=self.small_model,
+                messages=[{"role": "user", "content": prompt}],
+                max_completion_tokens=5,
+                temperature=0,
+            )
+            result = response.choices[0].message.content.strip().lower()
+            category = "individual" if "individual" in result else "group"
+        except Exception as e:
+            logger.warning(f"LLM entity type classification failed for '{entity_type}': {e}. Defaulting to 'group'.")
+            category = "group"
+
+        self._entity_type_category_cache[key] = category
+        logger.debug(f"Entity type '{entity_type}' classified as '{category}'")
+        return category
+
     def _is_individual_entity(self, entity_type: str) -> bool:
-        """Check whether the entity type is an individual"""
-        return entity_type.lower() in self.INDIVIDUAL_ENTITY_TYPES
+        """Check whether the entity type represents a single individual."""
+        return self._classify_entity_type(entity_type) == "individual"
 
     def _is_group_entity(self, entity_type: str) -> bool:
-        """Check whether the entity type is a group or institution"""
-        return entity_type.lower() in self.GROUP_ENTITY_TYPES
+        """Check whether the entity type represents a group or institution."""
+        return self._classify_entity_type(entity_type) == "group"
     
     def _generate_profile_with_llm(
         self,
@@ -1281,6 +1313,10 @@ Important:
                 item["profession"] = profile.profession
             if profile.interested_topics:
                 item["interested_topics"] = profile.interested_topics
+            if profile.stance:
+                item["stance"] = profile.stance
+            if profile.source_entity_type:
+                item["source_entity_type"] = profile.source_entity_type
 
             data.append(item)
 

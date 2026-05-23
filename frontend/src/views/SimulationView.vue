@@ -125,7 +125,11 @@ const toggleMaximize = (target) => {
 const handleGoBack = () => {
   // Return to process page
   if (projectData.value?.project_id) {
-    router.push({ name: 'Process', params: { projectId: projectData.value.project_id } })
+    router.push({
+      name: 'Process',
+      params: { projectId: projectData.value.project_id },
+      state: { backTo: history.state?.backTo },
+    })
   } else {
     router.push('/')
   }
@@ -140,18 +144,19 @@ const handleNextStep = (params = {}) => {
   } else {
     addLog(t('log.useAutoRounds'))
   }
-  
+
   // Build route params
   const routeParams = {
     name: 'SimulationRun',
-    params: { simulationId: currentSimulationId.value }
+    params: { simulationId: currentSimulationId.value },
+    state: { backTo: history.state?.backTo },
   }
-  
+
   // Pass custom rounds via query param if specified
   if (params.maxRounds) {
     routeParams.query = { maxRounds: params.maxRounds }
   }
-  
+
   // Navigate to Step 3 page
   router.push(routeParams)
 }

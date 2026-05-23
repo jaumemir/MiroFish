@@ -285,6 +285,9 @@
     "world1": "Món 1",
     "world2": "Món 2",
     "statusCompleted": "Completat",
+    "statusGenerating": "Generant",
+    "statusFailed": "Error",
+    "statusWaiting": "Esperant",
     "downloadReport": "Descarregar informe"
   },
   "step5": {

@@ -1731,9 +1731,26 @@ def start_simulation():
                     "error": t('api.maxRoundsInvalid')
                 }), 400
 
-        # If not provided in request, use DB value (DB > env precedence)
+        # If not provided in request, derive from simulation_config.json (time_config),
+        # falling back to DB/env value only if the config file is absent or incomplete.
         if max_rounds is None:
-            max_rounds = get_config('simulation.max_rounds', Config.OASIS_DEFAULT_MAX_ROUNDS)
+            try:
+                import json as _json_mod
+                sim_dir = os.path.join(Config.OASIS_SIMULATION_DATA_DIR, simulation_id)
+                config_path = os.path.join(sim_dir, 'simulation_config.json')
+                if os.path.exists(config_path):
+                    with open(config_path, 'r', encoding='utf-8') as _f:
+                        _cfg = _json_mod.load(_f)
+                    _tc = _cfg.get('time_config', {})
+                    _hours = _tc.get('total_simulation_hours')
+                    _mpr = _tc.get('minutes_per_round')
+                    if _hours and _mpr:
+                        max_rounds = int((_hours * 60) // _mpr)
+                        logger.info(f"max_rounds derived from simulation_config.json: {max_rounds} ({_hours}h / {_mpr}min per round)")
+            except Exception as _e:
+                logger.warning(f"Could not read max_rounds from simulation_config.json: {_e}")
+            if max_rounds is None:
+                max_rounds = get_config('simulation.max_rounds', Config.OASIS_DEFAULT_MAX_ROUNDS)
 
         if platform not in ['twitter', 'reddit', 'parallel']:
             return jsonify({
