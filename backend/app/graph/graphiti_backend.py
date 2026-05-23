@@ -527,12 +527,24 @@ class GraphitiBackend(GraphBackend):
         return await self._client.driver.execute_query(query, **kwargs)
 
     async def clone_graph(self, src_group_id: str, dst_group_id: str) -> None:
-        """Clone all nodes and relationships from src_group_id to dst_group_id."""
-        # Use apoc.create.node to preserve Neo4j labels (labels are not part of properties(n))
+        """Clone all nodes and relationships from src_group_id to dst_group_id.
+
+        Each cloned node gets a NEW uuid (randomUUID()) so that Graphiti's
+        deduplication logic never confuses clone nodes with the originals.
+        The original uuid is preserved as `source_uuid` for traceability.
+        Relationships are recreated matching by source_uuid in the destination.
+        """
         clone_nodes_query = """
             MATCH (n) WHERE n.group_id = $src
             WITH n, properties(n) AS props, labels(n) AS lbls
-            CALL apoc.create.node(lbls, apoc.map.merge(props, {group_id: $dst})) YIELD node
+            CALL apoc.create.node(
+                lbls,
+                apoc.map.merge(props, {
+                    group_id: $dst,
+                    uuid: randomUUID(),
+                    source_uuid: n.uuid
+                })
+            ) YIELD node
             RETURN node
         """
         await self._execute_neo4j_query(clone_nodes_query, {"src": src_group_id, "dst": dst_group_id})
@@ -540,8 +552,8 @@ class GraphitiBackend(GraphBackend):
         clone_rels_query = """
             MATCH (n)-[r]->(m)
             WHERE n.group_id = $src AND m.group_id = $src
-            MATCH (n2 {uuid: n.uuid, group_id: $dst})
-            MATCH (m2 {uuid: m.uuid, group_id: $dst})
+            MATCH (n2 {source_uuid: n.uuid, group_id: $dst})
+            MATCH (m2 {source_uuid: m.uuid, group_id: $dst})
             CALL apoc.create.relationship(n2, type(r), properties(r), m2) YIELD rel
             SET rel.group_id = $dst
             RETURN rel
