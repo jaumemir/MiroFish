@@ -99,6 +99,10 @@ def get_project_detail(project_id: str):
         } if ontology else None
 
         graph = project.graphs[-1] if project.graphs else None
+        # Reparació lazy: si el projecte va fallar però el graph va quedar en "building", el marquem com "failed"
+        if graph and graph.status == "building" and project.status == "failed":
+            graph.status = "failed"
+            db.commit()
         graph_data = {
             'id': graph.id,
             'status': graph.status,
@@ -744,7 +748,8 @@ def build_graph():
                 # Update project status to failed
                 build_logger.error(f"[{task_id}] Graph build failed: {str(e)}")
                 build_logger.debug(traceback.format_exc())
-                
+
+                ProjectManager.fail_graph_record(project_id)
                 ProjectManager.save_project({
                     "id": project_id,
                     "status": ProjectStatus.FAILED,

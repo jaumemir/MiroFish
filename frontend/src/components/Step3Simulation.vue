@@ -1,12 +1,5 @@
 <template>
   <div class="simulation-panel">
-    <!-- Adjust mode banner -->
-    <div v-if="props.adjustMode && !editingSection" class="adjust-banner">
-      📋 {{ $t('adjust.readOnlyMode') }} —
-      <button class="adjust-edit-btn" @click="editingSection = true">
-        ✏️ {{ $t('adjust.editSection') }}
-      </button>
-    </div>
     <!-- Top Control Bar -->
     <div class="control-bar">
       <div class="status-group">
@@ -98,7 +91,7 @@
       </div>
 
       <div class="action-controls">
-        <fieldset :disabled="props.adjustMode && !editingSection" style="border:none;padding:0;margin:0;">
+        <fieldset style="border:none;padding:0;margin:0;">
         <div class="option-row">
           <label class="toggle-label">
             <input type="checkbox" v-model="enableGraphMemoryUpdate" :disabled="phase >= 1" />
@@ -377,10 +370,9 @@ const startError = ref(null)
 const runStatus = ref({})
 const allActions = ref([]) // all actions (incrementally accumulated)
 const actionIds = ref(new Set()) // set of action IDs used for deduplication
+let fetchGeneration = 0 // incremented on reset; invalidates in-flight fetches
 const scrollContainer = ref(null)
 
-// Adjust mode
-const editingSection = ref(false)
 
 watch(() => props.adjustConfig, (config) => {
   if (config && props.adjustMode) {
@@ -462,6 +454,7 @@ const addLog = (msg) => {
 
 // Reset all state (used when restarting simulation)
 const resetAllState = () => {
+  fetchGeneration++   // invalidate any in-flight fetchRunStatusDetail responses
   phase.value = 0
   runStatus.value = {}
   allActions.value = []
@@ -709,10 +702,14 @@ const checkPlatformsCompleted = (data) => {
 
 const fetchRunStatusDetail = async () => {
   if (!props.simulationId) return
-  
+  const gen = fetchGeneration
+
   try {
     const res = await getRunStatusDetail(props.simulationId)
-    
+
+    // Discard if a reset happened while the request was in flight
+    if (gen !== fetchGeneration) return
+
     if (res.success && res.data) {
       // Use all_actions to get the full action list
       const serverActions = res.data.all_actions || []
@@ -722,7 +719,7 @@ const fetchRunStatusDetail = async () => {
       serverActions.forEach(action => {
         // Generate unique ID
         const actionId = action.id || `${action.timestamp}-${action.platform}-${action.agent_id}-${action.action_type}`
-        
+
         if (!actionIds.value.has(actionId)) {
           actionIds.value.add(actionId)
           allActions.value.push({
@@ -851,6 +848,12 @@ onMounted(async () => {
   addLog(t('log.step3Init'))
   if (!props.simulationId) return
 
+  // In adjust mode always launch a fresh simulation, ignoring previous state
+  if (props.adjustMode) {
+    doStartSimulation()
+    return
+  }
+
   // Check if simulation is already running before starting a new one
   try {
     const res = await getRunStatus(props.simulationId)
@@ -904,29 +907,6 @@ onUnmounted(() => {
   background: #FFFFFF;
   font-family: 'Space Grotesk', 'Noto Sans SC', system-ui, sans-serif;
   overflow: hidden;
-}
-
-.adjust-banner {
-  background: #1e2e1e;
-  border: 1px solid #3a6a3a;
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
-  margin: 0.5rem 0.75rem 0;
-  font-size: 0.82rem;
-  color: #80c0ff;
-}
-
-.adjust-edit-btn {
-  background: transparent;
-  border: none;
-  color: #ffd080;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-fieldset:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 fieldset:disabled * {

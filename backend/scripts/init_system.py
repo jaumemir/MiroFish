@@ -87,8 +87,10 @@ def main():
             # ── Email ─────────────────────────────────────────────────────
             ('acs.sender_display_name', Config.ACS_SENDER_DISPLAY_NAME, 'string', 'email', 'Nom del remitent email', 'Nom visible al camp "De:" dels emails enviats', False),
             # ── Límits ───────────────────────────────────────────────────
-            ('limits.max_projects_per_user', '20', 'int', 'limits', 'Màx. projectes per usuari', '', False),
-            ('limits.max_simulations',       '10', 'int', 'limits', 'Màx. simulacions',          '', False),
+            ('limits.max_projects_per_user',    '20', 'int', 'limits', 'Màx. projectes per usuari',          '', False),
+            ('limits.max_simulations',          '10', 'int', 'limits', 'Màx. simulacions',                   '', False),
+            ('limits.parallel_profile_workers', '5',  'int', 'limits', 'Workers paral·lels generació perfils', 'Threads simultanis per generar perfils d\'agent (Step 2)', False),
+            ('limits.interview_workers',        '2',  'int', 'limits', 'Workers paral·lels entrevista',        'Threads simultanis per cerques Zep durant l\'entrevista offline', False),
         ]
         for key, value, vtype, group, label, desc, is_secret in defaults:
             existing = db.get(SystemConfigModel, key)

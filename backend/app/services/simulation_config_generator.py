@@ -656,24 +656,9 @@ Field descriptions:
     ) -> Dict[str, Any]:
         """Generate event configuration"""
 
-        # Get list of available entity types for LLM reference
-        entity_types_available = list(set(
-            e.get_entity_type() or "Unknown" for e in entities
-        ))
-
-        # List representative entity names for each type
-        type_examples = {}
-        for e in entities:
-            etype = e.get_entity_type() or "Unknown"
-            if etype not in type_examples:
-                type_examples[etype] = []
-            if len(type_examples[etype]) < 3:
-                type_examples[etype].append(e.name)
-
-        type_info = "\n".join([
-            f"- {t}: {', '.join(examples)}"
-            for t, examples in type_examples.items()
-        ])
+        # Build a list of available agent names for the LLM to use as poster_type
+        agent_names_list = [e.name for e in entities]
+        agent_names_str = "\n".join(f"- {n}" for n in agent_names_list)
 
         # Use configured context truncation length
         context_truncated = context[:self.EVENT_CONFIG_CONTEXT_LENGTH]
@@ -684,31 +669,31 @@ Simulation requirement: {simulation_requirement}
 
 {context_truncated}
 
-## Available entity types and examples
-{type_info}
+## Available agents (use these exact names as poster_type)
+{agent_names_str}
 
 ## Task
 Generate the event configuration JSON:
 - Extract hot topic keywords
 - Describe the direction of public opinion development
-- Design initial post content — **each post must specify a poster_type (poster entity type)**
+- Design initial post content — **each post must specify a poster_type using the EXACT agent name from the list above**
 
-**Important**: poster_type must be chosen from the "Available entity types" listed above, so that initial posts can be assigned to the appropriate agent for publishing.
-For example: official announcements should be posted by Official/University types, news by MediaOutlet, student opinions by Student.
+**Important**: poster_type must be the EXACT name of one of the agents listed above (copy it verbatim).
+Distribute posts across different agents — do not assign all posts to the same agent.
 
 Return JSON format (no markdown):
 {{
     "hot_topics": ["keyword1", "keyword2", ...],
     "narrative_direction": "<description of public opinion development direction>",
     "initial_posts": [
-        {{"content": "post content", "poster_type": "entity type (must be chosen from available types)"}},
+        {{"content": "post content", "poster_type": "<exact agent name from the list above>"}},
         ...
     ],
     "reasoning": "<brief explanation>"
 }}"""
 
-        system_prompt = "You are a public opinion analysis expert. Return pure JSON format. Note that poster_type must exactly match the available entity types."
-        system_prompt = f"{system_prompt}\n\n{get_language_instruction()}\nIMPORTANT: The 'poster_type' field value MUST be in English PascalCase exactly matching the available entity types. Only 'content', 'narrative_direction', 'hot_topics' and 'reasoning' fields should use the specified language."
+        system_prompt = "You are a public opinion analysis expert. Return pure JSON format."
+        system_prompt = f"{system_prompt}\n\n{get_language_instruction()}\nIMPORTANT: The 'poster_type' field MUST be copied verbatim from the available agents list. Only 'content', 'narrative_direction', 'hot_topics' and 'reasoning' fields should use the specified language."
 
         try:
             return self._call_llm_with_retry(prompt, system_prompt)
@@ -739,17 +724,25 @@ Return JSON format (no markdown):
         Assign suitable poster agents to initial posts.
 
         Matches the most appropriate agent_id for each post based on its poster_type.
+        poster_type can be an entity name (e.g. "DGIA"), an entity type label (e.g.
+        "Organization"), or an English PascalCase type alias.  Matching is tried in
+        order: entity-name → type-label → alias → round-robin fallback.
         """
         if not event_config.initial_posts:
             return event_config
 
-        # Build agent index by entity type
+        # Build agent index by entity type label (lower-cased)
         agents_by_type: Dict[str, List[AgentActivityConfig]] = {}
         for agent in agent_configs:
             etype = agent.entity_type.lower()
             if etype not in agents_by_type:
                 agents_by_type[etype] = []
             agents_by_type[etype].append(agent)
+
+        # Build agent index by entity name (lower-cased) for direct name matching
+        agents_by_name: Dict[str, AgentActivityConfig] = {
+            agent.entity_name.lower(): agent for agent in agent_configs
+        }
 
         # Type alias map (handles different formats the LLM may output)
         type_aliases = {
@@ -765,6 +758,9 @@ Return JSON format (no markdown):
 
         # Track the used agent index per type to avoid assigning the same agent twice
         used_indices: Dict[str, int] = {}
+        # Fallback round-robin counter across all agents (sorted by influence desc)
+        sorted_agents_fallback = sorted(agent_configs, key=lambda a: a.influence_weight, reverse=True)
+        fallback_idx = 0
 
         updated_posts = []
         for post in event_config.initial_posts:
@@ -774,14 +770,19 @@ Return JSON format (no markdown):
             # Try to find a matching agent
             matched_agent_id = None
 
-            # 1. Direct match
-            if poster_type in agents_by_type:
+            # 1. Match by entity name (the LLM often uses entity names as poster_type)
+            if poster_type in agents_by_name:
+                matched_agent_id = agents_by_name[poster_type].agent_id
+
+            # 2. Direct match by entity type label
+            if matched_agent_id is None and poster_type in agents_by_type:
                 agents = agents_by_type[poster_type]
                 idx = used_indices.get(poster_type, 0) % len(agents)
                 matched_agent_id = agents[idx].agent_id
                 used_indices[poster_type] = idx + 1
-            else:
-                # 2. Alias match
+
+            # 3. Alias match
+            if matched_agent_id is None:
                 for alias_key, aliases in type_aliases.items():
                     if poster_type in aliases or alias_key == poster_type:
                         for alias in aliases:
@@ -794,13 +795,12 @@ Return JSON format (no markdown):
                     if matched_agent_id is not None:
                         break
 
-            # 3. If still no match, use the agent with the highest influence
+            # 4. Round-robin fallback across all agents to avoid always picking the same one
             if matched_agent_id is None:
-                logger.warning(f"No matching agent found for type '{poster_type}', using the highest-influence agent")
-                if agent_configs:
-                    # Sort by influence and pick the highest
-                    sorted_agents = sorted(agent_configs, key=lambda a: a.influence_weight, reverse=True)
-                    matched_agent_id = sorted_agents[0].agent_id
+                logger.warning(f"No matching agent found for type '{poster_type}', using round-robin fallback")
+                if sorted_agents_fallback:
+                    matched_agent_id = sorted_agents_fallback[fallback_idx % len(sorted_agents_fallback)].agent_id
+                    fallback_idx += 1
                 else:
                     matched_agent_id = 0
 

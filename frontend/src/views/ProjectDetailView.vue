@@ -59,7 +59,11 @@
               ID: {{ detail.graph.id.slice(0, 8) }}… · {{ detail.graph.node_count ?? '?' }} {{ t('projectDetail.entities') }}
             </div>
             <div class="pd-graph-actions">
-              <button class="pd-btn" @click="handleViewGraph">👁 {{ t('projectDetail.viewGraph') }}</button>
+              <button
+                v-if="detail.graph.status === 'ready'"
+                class="pd-btn"
+                @click="handleViewGraph"
+              >👁 {{ t('projectDetail.viewGraph') }}</button>
               <button
                 v-if="detail.graph.status === 'ready'"
                 class="pd-btn pd-btn-danger"
@@ -158,6 +162,12 @@
             <!-- Error / failed -->
             <template v-else-if="['error', 'failed'].includes(sim.status)">
               <button class="pd-btn-sm" @click="handleAdjust(sim)">✏️ {{ t('projectDetail.adjust') }}</button>
+              <button class="pd-btn-sm" @click="handleRegenerateReport(sim)">↺ {{ t('projectDetail.regenerateReport') }}</button>
+              <button v-if="sim.report_id" class="pd-btn-sm pd-btn-interaction" @click="handleInteraction(sim)">
+                💬 {{ t('projectDetail.interaction') }}
+              </button>
+              <button v-if="sim.report_id" class="pd-btn-sm" @click="handleDownloadMd(sim)">{{ t('projectDetail.downloadMd') }}</button>
+              <button v-if="sim.report_id" class="pd-btn-sm" @click="handleDownloadPdf(sim)">{{ t('projectDetail.downloadPdf') }}</button>
               <button class="pd-btn-sm" @click="handleDownloadLog(sim)">{{ t('projectDetail.downloadLog') }}</button>
             </template>
 
@@ -308,8 +318,12 @@ async function handleForceRebuild() {
   if (!confirm(t('projectDetail.confirmForceRebuild'))) return
   try {
     await forceRebuildGraph(props.projectId)
-    graphData.value = null
-    await loadDetail()
+    router.push({
+      name: 'Process',
+      params: { projectId: props.projectId },
+      query: { step: '1' },
+      state: { backTo: `/project/${props.projectId}` },
+    })
   } catch (e) {
     console.error('Force rebuild failed:', e)
   }

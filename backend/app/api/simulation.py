@@ -532,7 +532,7 @@ def prepare_simulation():
             except (TypeError, ValueError):
                 return jsonify({"success": False, "error": "max_agents must be an integer"}), 400
         use_llm_for_profiles = data.get('use_llm_for_profiles', True)
-        parallel_profile_count = data.get('parallel_profile_count', 5)
+        parallel_profile_count = data.get('parallel_profile_count') or get_config('limits.parallel_profile_workers', 5)
         
         # ========== Synchronously fetch entity count (before background task starts) ==========
         # This lets the frontend obtain the expected total agent count immediately after calling prepare.

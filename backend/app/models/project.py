@@ -243,6 +243,17 @@ class ProjectManager:
                 db.commit()
 
     @classmethod
+    def fail_graph_record(cls, project_id: str) -> None:
+        from .db_models import GraphModel
+        from sqlalchemy import select
+        with get_session() as db:
+            stmt = select(GraphModel).where(GraphModel.project_id == project_id).order_by(GraphModel.created_at.desc())
+            rec = db.execute(stmt).scalars().first()
+            if rec and rec.status == "building":
+                rec.status = "failed"
+                db.commit()
+
+    @classmethod
     def _get_project_files(cls, project_id: str) -> list:
         from sqlalchemy import select
         with get_session() as db:

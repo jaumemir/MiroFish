@@ -66,6 +66,7 @@
           :adjustMode="isAdjustMode"
           :adjustConfig="adjustData?.config ?? null"
           :agents="simulationAgents"
+          :maxRounds="simulationMaxRounds"
           @go-back="handleGoBack"
           @next-step="handleNextStep"
           @add-log="addLog"
@@ -123,6 +124,7 @@ let graphPollTimer = null
 const isAdjustMode = computed(() => route.query.mode === 'adjust')
 const adjustSimulationId = computed(() => route.query.simulationId)
 const adjustData = ref(null)
+const simulationMaxRounds = ref(null)
 
 // Shared agent list: updated by Step2 so Step3 stays in sync (adjust mode)
 const simulationAgents = ref([])
@@ -181,6 +183,7 @@ const handleNextStep = (params = {}) => {
     
     // If entering Step 3 from Step 2, record simulation round config
     if (currentStep.value === 3 && params.maxRounds) {
+      simulationMaxRounds.value = params.maxRounds
       addLog(t('log.customSimRounds', { rounds: params.maxRounds }))
     }
   }

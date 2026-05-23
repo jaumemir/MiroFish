@@ -21,6 +21,7 @@ from openai import OpenAI
 from zep_cloud.client import Zep
 
 from ..config import Config
+from ..config_db import get_config
 from ..utils.logger import get_logger
 from ..utils.locale import get_language_instruction, get_locale, set_locale, t
 from ..utils.llm_client import parse_azure_url
@@ -460,7 +461,7 @@ class OasisProfileGenerator:
             return None
 
         try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=get_config('limits.interview_workers', 2)) as executor:
                 edge_future = executor.submit(search_edges)
                 node_future = executor.submit(search_nodes)
                 edge_result = edge_future.result(timeout=30)

@@ -1794,7 +1794,7 @@ class SimulationRunner:
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": prompt_question},
                         ],
-                        max_tokens=600,
+                        max_completion_tokens=600,
                         temperature=0.7,
                     )
                     response_text = _resp.choices[0].message.content.strip()

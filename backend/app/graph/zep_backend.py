@@ -147,5 +147,13 @@ class ZepBackend(GraphBackend):
     def add_text(self, graph_id: str, data: str) -> None:
         self._client.graph.add(graph_id=graph_id, type="text", data=data)
 
+    def clone_graph_sync(self, src_graph_id: str, dst_graph_id: str) -> None:
+        """Clone a Zep graph into a new graph using the Zep Cloud clone API."""
+        self._client.graph.clone(
+            source_graph_id=src_graph_id,
+            target_graph_id=dst_graph_id,
+        )
+        logger.info(f"Zep graph cloned: {src_graph_id} -> {dst_graph_id}")
+
     def delete_graph(self, graph_id: str) -> None:
         self._client.graph.delete(graph_id=graph_id)

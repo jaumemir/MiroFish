@@ -70,6 +70,7 @@ const viewMode = ref('workbench')
 // Data State
 const currentReportId = ref(route.params.reportId)
 const simulationId = ref(null)
+const simulationGraphId = ref(null) // graph_id_simulation or graph_id from simulation state
 const projectData = ref(null)
 const graphData = ref(null)
 const graphLoading = ref(false)
@@ -136,8 +137,11 @@ const loadReportData = async () => {
       if (simulationId.value) {
         // Fetch simulation info
         const simRes = await getSimulation(simulationId.value)
-        if (simRes.success && simRes.data) {
-          const simData = simRes.data
+        if (simRes.success && simRes.simulation) {
+          const simData = simRes.simulation
+
+          // Prefer graph_id_simulation (cloned graph) over base graph_id
+          simulationGraphId.value = simData.graph_id_simulation || simData.graph_id || null
 
           // Fetch project info
           if (simData.project_id) {
@@ -146,9 +150,10 @@ const loadReportData = async () => {
               projectData.value = projRes.data
               addLog(t('log.projectLoadSuccess', { id: projRes.data.project_id }))
 
-              // Fetch graph data
-              if (projRes.data.graph_id) {
-                await loadGraph(projRes.data.graph_id)
+              // Use simulation-specific graph if available, otherwise fall back to project graph
+              const graphIdToLoad = simulationGraphId.value || projRes.data.graph_id
+              if (graphIdToLoad) {
+                await loadGraph(graphIdToLoad)
               }
             }
           }
@@ -179,8 +184,9 @@ const loadGraph = async (graphId) => {
 }
 
 const refreshGraph = () => {
-  if (projectData.value?.graph_id) {
-    loadGraph(projectData.value.graph_id)
+  const graphId = simulationGraphId.value || projectData.value?.graph_id
+  if (graphId) {
+    loadGraph(graphId)
   }
 }
 

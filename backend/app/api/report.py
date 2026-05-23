@@ -174,6 +174,23 @@ def generate_report():
                             "status": "completed"
                         }
                     )
+                    # Persistir report_id a la BD per fer-lo accessible independentment del filesystem
+                    try:
+                        from ..models.db_models import ReportModel
+                        from ..db import get_session
+                        with get_session() as db:
+                            if not db.get(ReportModel, report.report_id):
+                                db.add(ReportModel(
+                                    id=report.report_id,
+                                    project_id=state.project_id,
+                                    simulation_id=simulation_id,
+                                    graph_id=graph_id,
+                                    status="completed",
+                                    outline=report.outline.to_dict() if report.outline else None,
+                                ))
+                                db.commit()
+                    except Exception as e:
+                        logger.warning(f"Could not persist ReportModel to DB: {e}")
                     # Marcar la simulació com a COMPLETED ara que l'informe existeix
                     try:
                         from ..services.simulation_manager import SimulationStatus
