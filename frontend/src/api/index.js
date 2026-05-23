@@ -71,6 +71,10 @@ export const requestWithRetry = async (requestFn, maxRetries = 3, delay = 1000) 
     try {
       return await requestFn()
     } catch (error) {
+      // Do not retry client errors (4xx) — they are not transient
+      const status = error.response?.status
+      if (status >= 400 && status < 500) throw error
+
       if (i === maxRetries - 1) throw error
 
       console.warn(`Request failed, retrying (${i + 1}/${maxRetries})...`)

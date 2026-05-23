@@ -2612,14 +2612,9 @@ def interview_agents_batch():
                     "error": t('api.interviewListInvalidPlatform', index=i+1)
                 }), 400
 
-        # Check environment status
-        if not SimulationRunner.check_env_alive(simulation_id):
-            return jsonify({
-                "success": False,
-                "error": t('api.envNotRunning')
-            }), 400
-
         # Optimize prompt for each interview item: add prefix to prevent tool calls
+        # Note: no check_env_alive() here — SimulationRunner.interview_agents_batch
+        # handles both cases: env alive → IPC, env stopped → offline fallback from DB.
         optimized_interviews = []
         for interview in interviews:
             optimized_interview = interview.copy()
