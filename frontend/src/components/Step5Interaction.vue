@@ -1826,8 +1826,7 @@ watch(() => props.simulationId, (newId) => {
 .dropdown-menu {
   position: absolute;
   top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+  right: 0;
   min-width: 240px;
   background: #FFFFFF;
   border: 1px solid #E5E7EB;

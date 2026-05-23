@@ -1782,11 +1782,14 @@ class SimulationRunner:
                 try:
                     posts_block = "\n\n".join(all_posts[:15]) if all_posts else "(cap activitat registrada)"
                     system_prompt = (
-                        f"Ets {agent_name}. Aquí tens la teva descripció de persona:\n{persona}\n\n"
-                        f"Durant una simulació de xarxes socials vas escriure els següents missatges:\n{posts_block}\n\n"
-                        "Respon la pregunta de l'entrevistador mantenint el teu punt de vista, "
-                        "to i posicionament tal com es reflecteix en els teus missatges. "
-                        "Respon en primera persona, de forma natural i coherent amb el teu perfil."
+                        f"Ets un assistent que simula les respostes de {agent_name}, "
+                        f"un participant d'una simulació de xarxes socials.\n\n"
+                        f"Descripció del participant:\n{persona}\n\n"
+                        f"Missatges publicats durant la simulació:\n{posts_block}\n\n"
+                        f"Genera la resposta que donaria {agent_name} a la pregunta de l'entrevistador, "
+                        "mantenint el seu punt de vista, to i posicionament tal com es reflecteix "
+                        "en els seus missatges i descripció. La resposta ha de ser natural i coherent "
+                        "amb el perfil del participant."
                     )
                     _resp = _llm.chat.completions.create(
                         model=_llm_model,
