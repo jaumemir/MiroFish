@@ -1097,17 +1097,17 @@ def create_model(config: Dict[str, Any], use_boost: bool = False):
         )
     )
 
-    # When the model_type string is not a known camel-ai ModelType enum value
-    # (e.g. a custom Azure deployment name), camel-ai falls back to
-    # token_limit=999_999_999, so ScoreBasedContextCreator never prunes agent
-    # memory. Setting max_tokens in model_config_dict forces token_limit to a
-    # real value (base_model.token_limit = model_config_dict.get("max_tokens")
-    # or model_type.token_limit). Note: this is the context budget for pruning,
-    # not the max_tokens sent in the API request — camel-ai uses this field for
-    # both purposes, so we leave it at the context window size and let the model
-    # decide how many tokens to generate in the response.
+    # camel-ai uses model_config_dict["max_tokens"] as the context budget for
+    # ScoreBasedContextCreator (token_limit pruning). It also passes the dict
+    # directly to the OpenAI API, so any key present goes to the API call.
+    # gpt-5.1 and newer o-series models reject "max_tokens" with a 400 error
+    # and require "max_completion_tokens" instead.
+    # Strategy: omit max_tokens from the config dict (camel-ai falls back to
+    # model_type.token_limit, which for unknown model names is 999_999_999 —
+    # fine for our use case since we don't rely on ScoreBasedContextCreator
+    # pruning here). Use max_completion_tokens for the API call instead.
     context_window = int(os.environ.get("LLM_CONTEXT_WINDOW", "128000"))
-    model_config = {"max_tokens": context_window}
+    model_config = {"max_completion_tokens": context_window}
 
     if is_azure:
         # AzureOpenAIModel reads these specific env vars
