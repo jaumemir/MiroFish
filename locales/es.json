@@ -206,7 +206,6 @@
     "totalHours": "Horas totales",
     "minutesPerRound": "Minutos por ronda",
     "followingProbability": "Probabilidad de seguimiento",
-    "recsysType": "Sistema de recomendación",
     "loadingEntityCount": "Cargando entidades disponibles...",
     "availableEntities": "Entidades disponibles en el grafo:",
     "maxAgentsLabel": "Número de agentes a generar:",
@@ -284,7 +283,9 @@
     "panelRelatedEdges": "Aristas relacionadas",
     "panelRelatedNodes": "Nodos relacionados",
     "world1": "Mundo 1",
-    "world2": "Mundo 2"
+    "world2": "Mundo 2",
+    "statusCompleted": "Completado",
+    "downloadReport": "Descargar informe"
   },
   "step5": {
     "interactiveTools": "Herramientas interactivas",
@@ -429,6 +430,9 @@
     "interviewListMissingPrompt": "Elemento {index} de la lista de entrevistas: falta prompt",
     "interviewListInvalidPlatform": "Elemento {index} de la lista de entrevistas: plataforma debe ser 'twitter' o 'reddit'",
     "batchInterviewTimeout": "Tiempo de espera de respuesta de entrevista por lote agotado: {error}",
+    "offlineInterviewBased": "(Basado en la actividad de simulación — entrevista en vivo no disponible)\n\n{posts}",
+    "offlineInterviewNoActivity": "(Este agente no generó actividad durante la simulación)",
+    "offlineInterviewNoResults": "No hay resultados de entrevista disponibles (simulación finalizada y sin posts en la BD)",
     "globalInterviewTimeout": "Tiempo de espera de respuesta de entrevista global agotado: {error}",
     "envRunning": "El entorno está en ejecución y listo para comandos de entrevista",
     "envNotRunningShort": "Entorno no ejecutándose o cerrado",

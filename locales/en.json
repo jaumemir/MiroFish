@@ -206,7 +206,6 @@
     "totalHours": "Total Hours",
     "minutesPerRound": "Minutes per Round",
     "followingProbability": "Following Probability",
-    "recsysType": "Recommendation System",
     "loadingEntityCount": "Loading available entities...",
     "availableEntities": "Available entities in graph:",
     "maxAgentsLabel": "Number of agents to generate:",
@@ -284,7 +283,9 @@
     "panelRelatedEdges": "Related Edges",
     "panelRelatedNodes": "Related Nodes",
     "world1": "World 1",
-    "world2": "World 2"
+    "world2": "World 2",
+    "statusCompleted": "Completed",
+    "downloadReport": "Download Report"
   },
   "step5": {
     "interactiveTools": "Interactive Tools",
@@ -429,6 +430,9 @@
     "interviewListMissingPrompt": "Interview list item {index} missing prompt",
     "interviewListInvalidPlatform": "Interview list item {index} platform must be 'twitter' or 'reddit'",
     "batchInterviewTimeout": "Batch interview response timed out: {error}",
+    "offlineInterviewBased": "(Based on simulation activity — live interview unavailable)\n\n{posts}",
+    "offlineInterviewNoActivity": "(This agent did not generate any activity during the simulation)",
+    "offlineInterviewNoResults": "No interview results available (simulation finished and no DB posts found)",
     "globalInterviewTimeout": "Global interview response timed out: {error}",
     "envRunning": "Environment is running and ready for Interview commands",
     "envNotRunningShort": "Environment not running or closed",

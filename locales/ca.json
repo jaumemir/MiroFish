@@ -206,7 +206,6 @@
     "totalHours": "Hores totals",
     "minutesPerRound": "Minuts per ronda",
     "followingProbability": "Probabilitat de seguiment",
-    "recsysType": "Sistema de recomanació",
     "loadingEntityCount": "Carregant entitats disponibles...",
     "availableEntities": "Entitats disponibles al graf:",
     "maxAgentsLabel": "Nombre d'agents a generar:",
@@ -284,7 +283,9 @@
     "panelRelatedEdges": "Arestes relacionades",
     "panelRelatedNodes": "Nodes relacionats",
     "world1": "Món 1",
-    "world2": "Món 2"
+    "world2": "Món 2",
+    "statusCompleted": "Completat",
+    "downloadReport": "Descarregar informe"
   },
   "step5": {
     "interactiveTools": "Eines interactives",
@@ -429,6 +430,9 @@
     "interviewListMissingPrompt": "Manca prompt a l'element {index} de la llista d'entrevistes",
     "interviewListInvalidPlatform": "La plataforma de l'element {index} de la llista d'entrevistes ha de ser 'twitter' o 'reddit'",
     "batchInterviewTimeout": "Temps d'espera de la resposta d'entrevista en lot esgotat: {error}",
+    "offlineInterviewBased": "(Basat en l'activitat de simulació — entrevista en viu no disponible)\n\n{posts}",
+    "offlineInterviewNoActivity": "(Aquest agent no va generar activitat durant la simulació)",
+    "offlineInterviewNoResults": "No hi ha resultats d'entrevista disponibles (simulació finalitzada i sense posts a la BD)",
     "globalInterviewTimeout": "Temps d'espera de la resposta d'entrevista global esgotat: {error}",
     "envRunning": "L'entorn s'està executant i està llest per a comandes d'entrevista",
     "envNotRunningShort": "L'entorn no s'està executant o està tancat",

@@ -20,7 +20,7 @@ from queue import Queue
 
 from ..config import Config
 from ..utils.logger import get_logger
-from ..utils.locale import get_locale, set_locale
+from ..utils.locale import get_locale, set_locale, t
 from .zep_graph_memory_updater import ZepGraphMemoryManager
 from .simulation_ipc import SimulationIPCClient, CommandType, IPCResponse
 
@@ -1734,16 +1734,16 @@ class SimulationRunner:
                         conn.close()
                         if rows:
                             post_texts = [r[0] for r in rows if r[0]]
-                            response_text = (
-                                "(Based on simulation activity — live interview unavailable)\n\n"
-                                + "\n\n".join(post_texts)
+                            response_text = t(
+                                'api.offlineInterviewBased',
+                                posts="\n\n".join(post_texts)
                             )
                     except Exception as e:
                         logger.warning(f"Offline interview DB read failed ({plat_name}, agent {agent_id}): {e}")
 
                 results[key] = {
                     "agent_id": agent_id,
-                    "response": response_text or "(No activity recorded for this agent on this platform)",
+                    "response": response_text or t('api.offlineInterviewNoActivity'),
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "platform": plat_name,
                     "offline": True,
@@ -1759,7 +1759,7 @@ class SimulationRunner:
         return {
             "success": False,
             "interviews_count": 0,
-            "error": "No interview results available (simulation finished and no DB posts found)",
+            "error": t('api.offlineInterviewNoResults'),
         }
 
     @classmethod
