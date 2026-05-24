@@ -236,6 +236,7 @@
     "stoppingSim": "Stopping simulation...",
     "startGenerateReportBtn": "Generate Report",
     "generatingReportBtn": "Starting...",
+    "startSimBtn": "Start simulation",
     "stopSimBtn": "Stop simulation",
     "stoppingSimBtn": "Stopping...",
     "initializingSimBtn": "Initializing...",

@@ -236,6 +236,7 @@
     "stoppingSim": "Aturant la simulació...",
     "startGenerateReportBtn": "Genera l'informe",
     "generatingReportBtn": "Iniciant...",
+    "startSimBtn": "Inicia la simulació",
     "stopSimBtn": "Atura la simulació",
     "stoppingSimBtn": "Aturant...",
     "initializingSimBtn": "Inicialitzant...",
