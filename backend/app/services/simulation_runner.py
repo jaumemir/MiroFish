@@ -360,12 +360,10 @@ class SimulationRunner:
         minutes_per_round = time_config.get("minutes_per_round", 30)
         total_rounds = int(total_hours * 60 / minutes_per_round)
 
-        # Truncate if max_rounds is specified
-        if max_rounds is not None and max_rounds > 0:
-            original_rounds = total_rounds
-            total_rounds = min(total_rounds, max_rounds)
-            if total_rounds < original_rounds:
-                logger.info(f"Rounds truncated: {original_rounds} -> {total_rounds} (max_rounds={max_rounds})")
+        # Override total_rounds if max_rounds is specified
+        if max_rounds is not None and max_rounds > 0 and max_rounds != total_rounds:
+            logger.info(f"Rounds override: config={total_rounds} -> max_rounds={max_rounds}")
+            total_rounds = max_rounds
 
         state = SimulationRunState(
             simulation_id=simulation_id,
