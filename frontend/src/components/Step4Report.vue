@@ -839,7 +839,7 @@ const parseInterview = (text) => {
 
         // Format 2: - selected name (index X): reason
         if (!headerMatch) {
-          headerMatch = line.match(/^-\s*选择([^（(]+)(?:[（(]index\s*=?\s*\d+[)）])?[：:]\s*(.*)/)
+          headerMatch = line.match(/^-\s*selected\s+([^（(]+)(?:[（(]index\s*=?\s*\d+[)）])?[：:]\s*(.*)/)
           if (headerMatch) {
             name = headerMatch[1].trim()
             reasonStart = headerMatch[2]
@@ -863,7 +863,7 @@ const parseInterview = (text) => {
           // Start new person
           currentName = name
           currentReason = reasonStart ? [reasonStart.trim()] : []
-        } else if (currentName && line.trim() && !line.match(/^未选|^综上|^最终选择/)) {
+        } else if (currentName && line.trim() && !line.match(/^Not selected|^In summary|^Final selection/i)) {
           // Continuation line for the current reason (skip trailing summary paragraphs)
           currentReason.push(line.trim())
         }
@@ -951,11 +951,11 @@ const parseInterview = (text) => {
         // Platform fallback logic (compatibility with old format: only one platform tag)
         if (!twitterMatch && redditMatch) {
           // Only Reddit answer: copy as default if it is not a placeholder
-          if (interview.redditAnswer && interview.redditAnswer !== '（该平台未获得回复）') {
+          if (interview.redditAnswer && !isPlaceholderText(interview.redditAnswer)) {
             interview.twitterAnswer = interview.redditAnswer
           }
         } else if (twitterMatch && !redditMatch) {
-          if (interview.twitterAnswer && interview.twitterAnswer !== '（该平台未获得回复）') {
+          if (interview.twitterAnswer && !isPlaceholderText(interview.twitterAnswer)) {
             interview.redditAnswer = interview.twitterAnswer
           }
         } else if (!twitterMatch && !redditMatch) {
@@ -1424,11 +1424,11 @@ const InterviewDisplay = {
       return text.substring(0, 400) + '...'
     }
     
-    // Check if the text is a platform placeholder
+    // Check if the text is a platform placeholder (no reply)
     const isPlaceholderText = (text) => {
       if (!text) return true
       const t = text.trim()
-      return t === '（该平台未获得回复）' || t === '(该平台未获得回复)' || t === '[无回复]'
+      return t === '[No reply]' || t === '[no reply]' || t === ''
     }
 
     // Try to split answer by question number
@@ -1443,7 +1443,7 @@ const InterviewDisplay = {
       let match
 
       // First try the labeled "Question X:" format
-      const cnPattern = /(?:^|[\r\n]+)问题(\d+)[：:]\s*/g
+      const cnPattern = /(?:^|[\r\n]+)[Qq]uestion\s*(\d+)[：:]\s*/g
       while ((match = cnPattern.exec(answerText)) !== null) {
         matches.push({
           num: parseInt(match[1]),
@@ -1467,7 +1467,7 @@ const InterviewDisplay = {
       // If no numbering found or only one entry, return the whole text
       if (matches.length <= 1) {
         const cleaned = answerText
-          .replace(/^问题\d+[：:]\s*/, '')
+          .replace(/^[Qq]uestion\s*\d+[：:]\s*/, '')
           .replace(/^\d+\.\s+/, '')
           .trim()
         return [cleaned || answerText]
@@ -2128,8 +2128,8 @@ const getActionLabel = (action) => {
 }
 
 const getLogLevelClass = (log) => {
-  if (log.includes('ERROR') || log.includes('错误') || log.includes('Error')) return 'error'
-  if (log.includes('WARNING') || log.includes('警告') || log.includes('Warning')) return 'warning'
+  if (log.includes('ERROR') || log.includes('Error')) return 'error'
+  if (log.includes('WARNING') || log.includes('Warning')) return 'warning'
   // INFO uses default color, not marked as success
   return ''
 }
@@ -2226,11 +2226,6 @@ const extractFinalContent = (response) => {
     return finalAnswerMatch[1].trim()
   }
   
-  // Try to find content after "最终答案:" (Chinese final answer header)
-  const chineseFinalMatch = response.match(/最终答案[:：]\s*\n*([\s\S]*)$/i)
-  if (chineseFinalMatch) {
-    return chineseFinalMatch[1].trim()
-  }
   
   // If content starts with ## or # or >, it may be direct markdown content
   const trimmedResponse = response.trim()

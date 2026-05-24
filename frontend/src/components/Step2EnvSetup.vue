@@ -934,9 +934,9 @@ watch(() => props.adjustProfiles, (newProfiles) => {
 // In the F2A/B flow, config is generated in a separate step (generate-config endpoint),
 // so startConfigPolling must NOT be triggered here — only in loadPreparedData / continueToPhaseB.
 watch(currentStage, (newStage) => {
-  if (newStage === '生成Agent人设' || newStage === 'generating_profiles') { // '生成Agent人设' = Chinese stage label
+  if (newStage === 'generating_profiles') {
     phase.value = 1
-  } else if (newStage === '生成模拟配置' || newStage === 'generating_config') { // '生成模拟配置' = Chinese stage label
+  } else if (newStage === 'generating_config') {
     // Only activate step-03 and config polling when we are past phase_a (i.e. config was
     // explicitly triggered via continueToPhaseB, not during profile generation).
     if (currentPhase.value === 'phase_b' || currentPhase.value === 'generating' && phase.value >= 2) {
@@ -946,7 +946,7 @@ watch(currentStage, (newStage) => {
         startConfigPolling()
       }
     }
-  } else if (newStage === '准备模拟脚本' || newStage === 'copying_scripts') { // '准备模拟脚本' = Chinese stage label
+  } else if (newStage === 'copying_scripts') {
     phase.value = 2
   }
 })
