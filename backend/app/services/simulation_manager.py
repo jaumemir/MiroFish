@@ -780,6 +780,9 @@ class SimulationManager:
         time_fields = {"total_simulation_hours", "minutes_per_round",
                        "agents_per_hour_min", "agents_per_hour_max"}
         time_config = config.setdefault("time_config", {})
+        # Accept time_config fields either as direct keys or nested under time_config
+        if "time_config" in fields and isinstance(fields["time_config"], dict):
+            time_config.update(fields["time_config"])
         for k in time_fields:
             if k in fields:
                 time_config[k] = fields[k]
