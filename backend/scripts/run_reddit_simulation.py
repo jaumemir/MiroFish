@@ -221,7 +221,6 @@ def _compact_agent_memory(agent) -> bool:
             model=model,
             messages=[{"role": "user", "content": summary_prompt}],
             max_completion_tokens=COMPACTION_TARGET // 4,
-            temperature=0.3,
         )
         summary = response.choices[0].message.content.strip()
 
