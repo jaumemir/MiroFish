@@ -22,7 +22,7 @@ import signal
 import sys
 import sqlite3
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 # Global variables for signal handling
 _shutdown_event = None
@@ -129,6 +129,7 @@ except ImportError as e:
     print("Install with: pip install oasis-ai camel-ai")
     sys.exit(1)
 
+from action_logger import PlatformActionLogger
 
 # IPC constants
 IPC_COMMANDS_DIR = "ipc_commands"
@@ -345,6 +346,75 @@ class IPCHandler:
             return True
 
 
+_FILTERED_ACTIONS_TW = {'refresh', 'sign_up'}
+
+_ACTION_TYPE_MAP_TW = {
+    'create_post': 'CREATE_POST',
+    'like_post': 'LIKE_POST',
+    'repost': 'REPOST',
+    'quote_post': 'QUOTE_POST',
+    'follow': 'FOLLOW',
+    'mute': 'MUTE',
+    'do_nothing': 'DO_NOTHING',
+    'interview': 'INTERVIEW',
+}
+
+
+def _get_agent_names_from_config_tw(config: Dict[str, Any]) -> Dict[int, str]:
+    agent_names = {}
+    for agent_config in config.get("agent_configs", []):
+        agent_id = agent_config.get("agent_id")
+        entity_name = agent_config.get("entity_name", f"Agent_{agent_id}")
+        if agent_id is not None:
+            agent_names[agent_id] = entity_name
+    return agent_names
+
+
+def _fetch_new_actions_from_db_tw(
+    db_path: str,
+    last_rowid: int,
+    agent_names: Dict[int, str],
+) -> Tuple[List[Dict[str, Any]], int]:
+    """Read new rows from OASIS trace table since last_rowid."""
+    actions: List[Dict[str, Any]] = []
+    new_last_rowid = last_rowid
+
+    if not os.path.exists(db_path):
+        return actions, new_last_rowid
+
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT rowid, user_id, action, info FROM trace WHERE rowid > ? ORDER BY rowid ASC",
+            (last_rowid,),
+        )
+        for rowid, user_id, action, info_json in cursor.fetchall():
+            new_last_rowid = rowid
+            if action in _FILTERED_ACTIONS_TW:
+                continue
+            try:
+                action_args = json.loads(info_json) if info_json else {}
+            except json.JSONDecodeError:
+                action_args = {}
+            simplified: Dict[str, Any] = {}
+            for key in ('content', 'post_id', 'comment_id', 'follow_id', 'query',
+                        'like_id', 'quoted_id', 'new_post_id'):
+                if key in action_args:
+                    simplified[key] = action_args[key]
+            actions.append({
+                'agent_id': user_id,
+                'agent_name': agent_names.get(user_id, f'Agent_{user_id}'),
+                'action_type': _ACTION_TYPE_MAP_TW.get(action, action.upper()),
+                'action_args': simplified,
+            })
+        conn.close()
+    except Exception as e:
+        print(f"Failed to read DB actions: {e}")
+
+    return actions, new_last_rowid
+
+
 class TwitterSimulationRunner:
     """Twitter simulation runner."""
 
@@ -523,6 +593,14 @@ class TwitterSimulationRunner:
         print("\nStarting simulation loop...")
         start_time = datetime.now()
 
+        # Action logger for run_state.json monitoring
+        action_logger = PlatformActionLogger("twitter", self.simulation_dir)
+        action_logger.log_simulation_start(self.config)
+        agent_names = _get_agent_names_from_config_tw(self.config)
+        last_rowid = 0
+        total_actions = 0
+        completed_naturally = False
+
         for round_num in range(total_rounds):
             simulated_minutes = round_num * minutes_per_round
             simulated_hour = (simulated_minutes // 60) % 24
@@ -532,7 +610,10 @@ class TwitterSimulationRunner:
                 self.env, simulated_hour, round_num
             )
 
+            action_logger.log_round_start(round_num + 1, simulated_hour)
+
             if not active_agents:
+                action_logger.log_round_end(round_num + 1, 0)
                 continue
 
             actions = {
@@ -542,6 +623,20 @@ class TwitterSimulationRunner:
 
             await self.env.step(actions)
 
+            # Fetch actions from DB and write to actions.jsonl
+            new_actions, last_rowid = _fetch_new_actions_from_db_tw(db_path, last_rowid, agent_names)
+            for action_data in new_actions:
+                action_logger.log_action(
+                    round_num=round_num + 1,
+                    agent_id=action_data['agent_id'],
+                    agent_name=action_data['agent_name'],
+                    action_type=action_data['action_type'],
+                    action_args=action_data['action_args'],
+                )
+                total_actions += 1
+
+            action_logger.log_round_end(round_num + 1, len(new_actions))
+
             if (round_num + 1) % 10 == 0 or round_num == 0:
                 elapsed = (datetime.now() - start_time).total_seconds()
                 progress = (round_num + 1) / total_rounds * 100
@@ -550,10 +645,19 @@ class TwitterSimulationRunner:
                       f"- {len(active_agents)} agents active "
                       f"- elapsed: {elapsed:.1f}s")
 
+            if round_num + 1 == total_rounds:
+                completed_naturally = True
+
         total_elapsed = (datetime.now() - start_time).total_seconds()
         print(f"\nSimulation loop complete!")
         print(f"  - Total time: {total_elapsed:.1f}s")
+        print(f"  - Total actions logged: {total_actions}")
         print(f"  - Database: {db_path}")
+
+        if completed_naturally:
+            action_logger.log_simulation_end(total_rounds, total_actions)
+        else:
+            action_logger.log_simulation_stopped(round_num + 1 if total_rounds > 0 else 0, total_actions)
 
         if self.wait_for_commands:
             print("\n" + "=" * 60)
