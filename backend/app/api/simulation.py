@@ -4,6 +4,7 @@ Step 2: Zep entity reading & filtering, OASIS simulation preparation & execution
 """
 
 import os
+import json
 import traceback
 from flask import request, jsonify, send_file, Response
 
@@ -819,6 +820,43 @@ def get_prepare_status():
             sim_state = SimulationManager().get_simulation(simulation_id)
             if sim_state:
                 task_dict["simulation_status"] = sim_state.status.value if hasattr(sim_state.status, 'value') else str(sim_state.status)
+
+            # When generating profiles, replace in-memory current_item with the real
+            # count from the profiles file already written to disk.  This avoids the
+            # race-condition where parallel threads report out-of-order counts and the
+            # progress bar appears to go backwards.
+            pd = task_dict.get("progress_detail") or task_dict.get("metadata")
+            if (pd and pd.get("current_stage") == "generating_profiles"
+                    and task_dict.get("status") == "processing"):
+                try:
+                    sim_dir = os.path.join(Config.OASIS_SIMULATION_DATA_DIR, simulation_id)
+                    profiles_path = os.path.join(sim_dir, "reddit_profiles.json")
+                    if not os.path.exists(profiles_path):
+                        profiles_path = os.path.join(sim_dir, "twitter_profiles.csv")
+                    real_count = 0
+                    if os.path.exists(profiles_path):
+                        if profiles_path.endswith(".json"):
+                            with open(profiles_path, "r", encoding="utf-8") as f:
+                                data_on_disk = json.load(f)
+                                real_count = len(data_on_disk) if isinstance(data_on_disk, list) else 0
+                        else:
+                            import csv
+                            with open(profiles_path, "r", encoding="utf-8") as f:
+                                real_count = sum(1 for _ in csv.reader(f)) - 1  # subtract header
+                    if real_count > 0:
+                        total = pd.get("total_items", 0)
+                        pd["current_item"] = real_count
+                        if total > 0:
+                            stage_pct = int(real_count / total * 100)
+                            pd["stage_progress"] = stage_pct
+                            task_dict["progress"] = int(20 + 50 * stage_pct / 100)
+                            task_dict["message"] = (
+                                f"[{pd.get('stage_index', 2)}/{pd.get('total_stages', 4)}] "
+                                f"{pd.get('current_stage_name', 'Generating Agent Profiles')}: "
+                                f"{real_count}/{total}"
+                            )
+                except Exception:
+                    pass
 
         return jsonify({
             "success": True,

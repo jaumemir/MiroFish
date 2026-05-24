@@ -1020,30 +1020,29 @@ Important:
             if not realtime_output_path:
                 return
 
+            # Take a snapshot under the lock (fast), then write to disk outside it
+            # so parallel threads are not blocked during I/O.
             with lock:
-                # Filter out profiles that have been generated
-                existing_profiles = [p for p in profiles if p is not None]
-                if not existing_profiles:
-                    return
+                snapshot = [p for p in profiles if p is not None]
+            if not snapshot:
+                return
 
-                try:
-                    if output_platform == "reddit":
-                        # Reddit JSON format
-                        profiles_data = [p.to_reddit_format() for p in existing_profiles]
-                        with open(realtime_output_path, 'w', encoding='utf-8') as f:
-                            json.dump(profiles_data, f, ensure_ascii=False, indent=2)
-                    else:
-                        # Twitter CSV format
-                        import csv
-                        profiles_data = [p.to_twitter_format() for p in existing_profiles]
-                        if profiles_data:
-                            fieldnames = list(profiles_data[0].keys())
-                            with open(realtime_output_path, 'w', encoding='utf-8', newline='') as f:
-                                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                                writer.writeheader()
-                                writer.writerows(profiles_data)
-                except Exception as e:
-                    logger.warning(f"Real-time profile save failed: {e}")
+            try:
+                if output_platform == "reddit":
+                    profiles_data = [p.to_reddit_format() for p in snapshot]
+                    with open(realtime_output_path, 'w', encoding='utf-8') as f:
+                        json.dump(profiles_data, f, ensure_ascii=False, indent=2)
+                else:
+                    import csv
+                    profiles_data = [p.to_twitter_format() for p in snapshot]
+                    if profiles_data:
+                        fieldnames = list(profiles_data[0].keys())
+                        with open(realtime_output_path, 'w', encoding='utf-8', newline='') as f:
+                            writer = csv.DictWriter(f, fieldnames=fieldnames)
+                            writer.writeheader()
+                            writer.writerows(profiles_data)
+            except Exception as e:
+                logger.warning(f"Real-time profile save failed: {e}")
         
         # Capture locale before spawning thread pool workers
         current_locale = get_locale()
