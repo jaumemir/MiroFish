@@ -190,7 +190,7 @@ except ImportError as e:
 # COMPACTION_THRESHOLD: when memory tokens exceed this value, compact.
 # COMPACTION_TARGET   : target token budget for the summary itself.
 # ─────────────────────────────────────────────────────────────────────────────
-COMPACTION_THRESHOLD = int(os.environ.get("AGENT_COMPACTION_THRESHOLD", "150000"))
+COMPACTION_THRESHOLD = int(os.environ.get("AGENT_COMPACTION_THRESHOLD", "80000"))
 COMPACTION_TARGET    = int(os.environ.get("AGENT_COMPACTION_TARGET",    "40000"))
 
 

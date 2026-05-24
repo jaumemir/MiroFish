@@ -136,7 +136,7 @@ except ImportError as e:
 # they exceed COMPACTION_THRESHOLD, summarise the history with LLM_SMALL and
 # replace it with a single compact record.
 # ─────────────────────────────────────────────────────────────────────────────
-COMPACTION_THRESHOLD = int(os.environ.get("AGENT_COMPACTION_THRESHOLD", "150000"))
+COMPACTION_THRESHOLD = int(os.environ.get("AGENT_COMPACTION_THRESHOLD", "80000"))
 COMPACTION_TARGET    = int(os.environ.get("AGENT_COMPACTION_TARGET",    "40000"))
 
 
