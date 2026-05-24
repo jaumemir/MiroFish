@@ -686,6 +686,7 @@ const sendMessage = async () => {
 
 const sendToReportAgent = async (message) => {
   addLog(t('log.sendToReportAgent', { message: message.substring(0, 50) }))
+  addLog(t('log.reportAgentWaiting'))
   
   // Build chat history for API
   const historyForApi = chatHistory.value
@@ -718,8 +719,9 @@ const sendToAgent = async (message) => {
   if (!selectedAgent.value || selectedAgentIndex.value === null) {
     throw new Error(t('step5.selectAgentFirst'))
   }
-  
+
   addLog(t('log.sendToAgent', { name: selectedAgent.value.username, message: message.substring(0, 50) }))
+  addLog(t('log.interviewWaiting', { name: selectedAgent.value.username }))
   
   // Build prompt with chat history
   let prompt = message
@@ -769,7 +771,9 @@ const sendToAgent = async (message) => {
         content: responseContent,
         timestamp: new Date().toISOString()
       })
-      addLog(t('log.agentReplied', { name: selectedAgent.value.username }))
+      const isOffline = res.data?.offline || resultData?.offline
+      const replyKey = isOffline ? 'log.interviewOffline' : 'log.interviewOnline'
+      addLog(t(replyKey, { name: selectedAgent.value.username }))
     } else {
       throw new Error(t('step5.noResponse'))
     }
@@ -812,13 +816,14 @@ const submitSurvey = async () => {
   
   isSurveying.value = true
   addLog(t('log.sendSurvey', { count: selectedAgents.value.size }))
-  
+  addLog(t('log.surveyWaiting', { count: selectedAgents.value.size }))
+
   try {
     const interviews = Array.from(selectedAgents.value).map(idx => ({
       agent_id: idx,
       prompt: surveyQuestion.value.trim()
     }))
-    
+
     const res = await interviewAgents({
       simulation_id: props.simulationId,
       interviews: interviews
@@ -855,15 +860,20 @@ const submitSurvey = async () => {
           }
         }
         
+        const agentName = agent?.username || `Agent ${agentIdx}`
+        const isOffline = res.data?.offline || resultData?.offline
+        const agentReplyKey = isOffline ? 'log.surveyAgentOffline' : 'log.surveyAgentReplied'
+        addLog(t(agentReplyKey, { name: agentName }))
+
         surveyResultsList.push({
           agent_id: agentIdx,
-          agent_name: agent?.username || `Agent ${agentIdx}`,
+          agent_name: agentName,
           profession: agent?.profession,
           question: surveyQuestion.value.trim(),
           answer: responseContent
         })
       }
-      
+
       surveyResults.value = surveyResultsList
       addLog(t('log.receivedReplies', { count: surveyResults.value.length }))
     } else {

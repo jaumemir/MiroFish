@@ -610,7 +610,14 @@
     "returnToStep": "Returning to Step {step}: {name}",
     "customSimRounds": "Custom simulation rounds: {rounds} rounds",
     "reconnectingToTask": "Reconnecting to active task {taskId}…",
-    "configSaved": "✓ Configuration saved"
+    "configSaved": "✓ Configuration saved",
+    "interviewWaiting": "Waiting for {name} response...",
+    "interviewOffline": "{name} responded (offline mode)",
+    "interviewOnline": "{name} responded (live)",
+    "surveyWaiting": "Waiting for {count} agent responses...",
+    "surveyAgentReplied": "  ✓ {name} responded",
+    "surveyAgentOffline": "  ✓ {name} responded (offline)",
+    "reportAgentWaiting": "Waiting for Report Agent response..."
   },
   "report": {
     "taskStarted": "Report generation task started",

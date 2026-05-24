@@ -610,7 +610,14 @@
     "returnToStep": "Tornant al pas {step}: {name}",
     "customSimRounds": "Rondes de simulació personalitzades: {rounds} rondes",
     "reconnectingToTask": "Reconnectant a la tasca activa {taskId}…",
-    "configSaved": "✓ Configuració desada"
+    "configSaved": "✓ Configuració desada",
+    "interviewWaiting": "Esperant resposta de {name}...",
+    "interviewOffline": "{name} ha respost (mode offline)",
+    "interviewOnline": "{name} ha respost (en viu)",
+    "surveyWaiting": "Esperant resposta de {count} agents...",
+    "surveyAgentReplied": "  ✓ {name} ha respost",
+    "surveyAgentOffline": "  ✓ {name} ha respost (offline)",
+    "reportAgentWaiting": "Esperant resposta de l'Agent d'informe..."
   },
   "report": {
     "taskStarted": "Tasca de generació de l'informe iniciada",
