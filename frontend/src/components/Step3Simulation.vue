@@ -640,13 +640,15 @@ const prevRedditRound = ref(0)
 
 const fetchRunStatus = async () => {
   if (!props.simulationId) return
-  
+  // Only process status updates when simulation is actually running
+  if (phase.value !== 1) return
+
   try {
     const res = await getRunStatus(props.simulationId)
-    
+
     if (res.success && res.data) {
       const data = res.data
-      
+
       runStatus.value = data
       
       // Detect round changes per platform and emit log entries
