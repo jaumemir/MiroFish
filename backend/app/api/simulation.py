@@ -1871,7 +1871,7 @@ def start_simulation():
                         logger.warning(f"Warning while clearing logs: {cleanup_result.get('errors')}")
                     # Stop any lingering graph memory updater from a previous run
                     try:
-                        from .zep_graph_memory_updater import ZepGraphMemoryManager
+                        from ..services.zep_graph_memory_updater import ZepGraphMemoryManager
                         ZepGraphMemoryManager.stop_updater(simulation_id)
                     except Exception as _gu_err:
                         logger.warning(f"Could not stop graph updater on force restart: {_gu_err}")
