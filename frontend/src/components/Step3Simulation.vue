@@ -874,17 +874,16 @@ onMounted(async () => {
         await doReconnectSimulation()
         return
       }
-      if (status === 'completed' || status === 'failed') {
+      if (status === 'completed') {
         runStatus.value = res.data
         phase.value = 2
         emit('update-status', 'completed')
         await fetchRunStatusDetail()
-        if (status === 'failed') {
-          addLog(t('log.simEndedWithError'))
-        } else {
-          addLog(t('log.simAlreadyCompleted'))
-        }
+        addLog(t('log.simAlreadyCompleted'))
         return
+      }
+      if (status === 'failed') {
+        // Previous run failed — fall through to doStartSimulation() for a fresh start
       }
       if (status === 'stopped') {
         // Simulació pausada: carregar dades existents i oferir reprendre
