@@ -437,7 +437,15 @@ class SimulationRunner:
             # Create main log file to avoid stdout/stderr pipe buffer filling up and blocking the process
             main_log_path = os.path.join(sim_dir, "simulation.log")
             os.makedirs(sim_dir, exist_ok=True)
-            main_log_file = open(main_log_path, 'w', encoding='utf-8')
+            try:
+                main_log_file = open(main_log_path, 'w', encoding='utf-8')
+            except OSError as log_open_err:
+                logger.warning(f"Could not open simulation.log directly ({log_open_err}), retrying after delete")
+                try:
+                    os.remove(main_log_path)
+                except Exception:
+                    pass
+                main_log_file = open(main_log_path, 'w', encoding='utf-8')
 
             # Set subprocess environment variables to ensure UTF-8 encoding on Windows.
             # This fixes issues where third-party libraries (e.g. OASIS) open files without specifying an encoding.
