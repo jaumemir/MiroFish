@@ -242,7 +242,9 @@
     "simResumed": "Simulation resumed",
     "resumeFailed": "Resume failed: {error}",
     "resumeException": "Resume error: {error}",
-    "backToPrevStep": "← Previous step"
+    "backToPrevStep": "← Previous step",
+    "enableInfoPlaza": "Info Plaza",
+    "enableTopicCommunity": "Topic Community"
   },
   "step4": {
     "generatingSection": "Generating {title}...",

@@ -242,7 +242,9 @@
     "simResumed": "Simulación reanudada",
     "resumeFailed": "Error al reanudar: {error}",
     "resumeException": "Excepción al reanudar: {error}",
-    "backToPrevStep": "← Paso anterior"
+    "backToPrevStep": "← Paso anterior",
+    "enableInfoPlaza": "Info Plaza",
+    "enableTopicCommunity": "Topic Community"
   },
   "step4": {
     "generatingSection": "Generando {title}...",

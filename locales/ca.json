@@ -242,7 +242,9 @@
     "simResumed": "Simulació represa",
     "resumeFailed": "Error en reprendre: {error}",
     "resumeException": "Excepció en reprendre: {error}",
-    "backToPrevStep": "← Pas anterior"
+    "backToPrevStep": "← Pas anterior",
+    "enableInfoPlaza": "Info Plaza",
+    "enableTopicCommunity": "Topic Community"
   },
   "step4": {
     "generatingSection": "Generant {title}...",

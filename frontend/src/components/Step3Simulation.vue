@@ -94,6 +94,18 @@
         <fieldset style="border:none;padding:0;margin:0;">
         <div class="option-row">
           <label class="toggle-label">
+            <input type="checkbox" v-model="enableInfoPlaza" :disabled="phase >= 1" />
+            <span>{{ $t('step3.enableInfoPlaza') }}</span>
+          </label>
+        </div>
+        <div class="option-row">
+          <label class="toggle-label">
+            <input type="checkbox" v-model="enableTopicCommunity" :disabled="phase >= 1" />
+            <span>{{ $t('step3.enableTopicCommunity') }}</span>
+          </label>
+        </div>
+        <div class="option-row">
+          <label class="toggle-label">
             <input type="checkbox" v-model="enableGraphMemoryUpdate" :disabled="phase >= 1" />
             <span>Graph Memory Update</span>
             <span class="hint">Update agent conversations to graph in real time (needed for report analysis)</span>
@@ -361,7 +373,16 @@ const router = useRouter()
 // State
 const isGeneratingReport = ref(false)
 const phase = ref(0) // 0: not started / paused, 1: running, 2: completed
+const enableInfoPlaza = ref(true)
+const enableTopicCommunity = ref(true)
 const enableGraphMemoryUpdate = ref(true)
+
+const selectedPlatform = computed(() => {
+  if (enableInfoPlaza.value && enableTopicCommunity.value) return 'parallel'
+  if (enableInfoPlaza.value) return 'twitter'
+  if (enableTopicCommunity.value) return 'reddit'
+  return 'parallel' // fallback: ambdues si cap seleccionada
+})
 const isStarting = ref(false)
 const isStopping = ref(false)
 const isResuming = ref(false)
@@ -487,7 +508,7 @@ const doStartSimulation = async () => {
   try {
     const params = {
       simulation_id: props.simulationId,
-      platform: 'parallel',
+      platform: selectedPlatform.value,
       force: true,  // force restart
       enable_graph_memory_update: enableGraphMemoryUpdate.value  // enable dynamic graph memory update
     }
@@ -568,7 +589,7 @@ const handleResumeSimulation = async () => {
   try {
     const params = {
       simulation_id: props.simulationId,
-      platform: 'parallel',
+      platform: selectedPlatform.value,
       force: false,  // no esborrar logs existents
       enable_graph_memory_update: enableGraphMemoryUpdate.value
     }
