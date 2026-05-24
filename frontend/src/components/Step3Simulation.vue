@@ -112,11 +112,12 @@
         <button
           v-if="phase === 1"
           class="action-btn stop"
-          :disabled="isStopping"
+          :disabled="isStopping || runStatus.runner_status === 'starting'"
+          :title="runStatus.runner_status === 'starting' ? $t('step3.waitingForSimStart') : ''"
           @click="handleStopSimulation"
         >
           <span v-if="isStopping" class="loading-spinner-small"></span>
-          {{ isStopping ? $t('step3.stoppingSimBtn') : $t('step3.stopSimBtn') }}
+          {{ runStatus.runner_status === 'starting' ? $t('step3.initializingSimBtn') : (isStopping ? $t('step3.stoppingSimBtn') : $t('step3.stopSimBtn')) }}
         </button>
         <!-- Botó reprèn (quan pausada) -->
         <button

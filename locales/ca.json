@@ -238,6 +238,8 @@
     "generatingReportBtn": "Iniciant...",
     "stopSimBtn": "Atura la simulació",
     "stoppingSimBtn": "Aturant...",
+    "initializingSimBtn": "Inicialitzant...",
+    "waitingForSimStart": "La simulació s'està inicialitzant (clonant el graf). Si us plau, espera.",
     "resumeSimBtn": "Reprèn la simulació",
     "resumingSim": "Reprenent la simulació...",
     "simResumed": "Simulació represa",

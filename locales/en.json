@@ -238,6 +238,8 @@
     "generatingReportBtn": "Starting...",
     "stopSimBtn": "Stop simulation",
     "stoppingSimBtn": "Stopping...",
+    "initializingSimBtn": "Initializing...",
+    "waitingForSimStart": "Simulation is initializing (graph clone in progress). Please wait.",
     "resumeSimBtn": "Resume simulation",
     "resumingSim": "Resuming simulation...",
     "simResumed": "Simulation resumed",

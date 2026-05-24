@@ -1771,11 +1771,13 @@ def start_simulation():
 
         # If not provided in request, derive from simulation_config.json (time_config),
         # falling back to DB/env value only if the config file is absent or incomplete.
+        import json as _json_mod
+        sim_dir = os.path.join(Config.OASIS_SIMULATION_DATA_DIR, simulation_id)
+        config_path = os.path.join(sim_dir, 'simulation_config.json')
+        _user_provided_max_rounds = max_rounds is not None
+
         if max_rounds is None:
             try:
-                import json as _json_mod
-                sim_dir = os.path.join(Config.OASIS_SIMULATION_DATA_DIR, simulation_id)
-                config_path = os.path.join(sim_dir, 'simulation_config.json')
                 if os.path.exists(config_path):
                     with open(config_path, 'r', encoding='utf-8') as _f:
                         _cfg = _json_mod.load(_f)
@@ -1789,6 +1791,24 @@ def start_simulation():
                 logger.warning(f"Could not read max_rounds from simulation_config.json: {_e}")
             if max_rounds is None:
                 max_rounds = get_config('simulation.max_rounds', Config.OASIS_DEFAULT_MAX_ROUNDS)
+
+        # When the user explicitly set max_rounds via the slider, patch simulation_config.json
+        # so that total_simulation_hours reflects the chosen value (assuming minutes_per_round=60).
+        if _user_provided_max_rounds and max_rounds and os.path.exists(config_path):
+            try:
+                with open(config_path, 'r', encoding='utf-8') as _f:
+                    _cfg = _json_mod.load(_f)
+                _tc = _cfg.setdefault('time_config', {})
+                _mpr = _tc.get('minutes_per_round', 60)
+                _new_hours = (max_rounds * _mpr) / 60
+                _old_hours = _tc.get('total_simulation_hours')
+                if _old_hours != _new_hours:
+                    _tc['total_simulation_hours'] = _new_hours
+                    with open(config_path, 'w', encoding='utf-8') as _f:
+                        _json_mod.dump(_cfg, _f, ensure_ascii=False, indent=2)
+                    logger.info(f"simulation_config.json patched: total_simulation_hours {_old_hours} -> {_new_hours} (max_rounds={max_rounds}, mpr={_mpr})")
+            except Exception as _e:
+                logger.warning(f"Could not patch simulation_config.json with max_rounds: {_e}")
 
         if platform not in ['twitter', 'reddit', 'parallel']:
             return jsonify({

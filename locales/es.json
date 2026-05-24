@@ -238,6 +238,8 @@
     "generatingReportBtn": "Iniciando...",
     "stopSimBtn": "Detener simulación",
     "stoppingSimBtn": "Deteniendo...",
+    "initializingSimBtn": "Inicializando...",
+    "waitingForSimStart": "La simulación se está inicializando (clonando el grafo). Por favor, espera.",
     "resumeSimBtn": "Reanudar simulación",
     "resumingSim": "Reanudando simulación...",
     "simResumed": "Simulación reanudada",
