@@ -152,10 +152,12 @@ const handleNextStep = (params = {}) => {
     state: { backTo: history.state?.backTo },
   }
 
-  // Pass custom rounds via query param if specified
-  if (params.maxRounds) {
-    routeParams.query = { maxRounds: params.maxRounds }
-  }
+  // Pass rounds and platform selection via query params
+  const query = {}
+  if (params.maxRounds) query.maxRounds = params.maxRounds
+  if (params.enableInfoPlaza === false) query.enableInfoPlaza = 'false'
+  if (params.enableTopicCommunity === false) query.enableTopicCommunity = 'false'
+  if (Object.keys(query).length) routeParams.query = query
 
   // Navigate to Step 3 page
   router.push(routeParams)

@@ -67,6 +67,8 @@
           :adjustConfig="adjustData?.config ?? null"
           :agents="simulationAgents"
           :maxRounds="simulationMaxRounds"
+          :enableInfoPlaza="simulationEnableInfoPlaza"
+          :enableTopicCommunity="simulationEnableTopicCommunity"
           @go-back="handleGoBack"
           @next-step="handleNextStep"
           @add-log="addLog"
@@ -125,6 +127,8 @@ const isAdjustMode = computed(() => route.query.mode === 'adjust')
 const adjustSimulationId = computed(() => route.query.simulationId)
 const adjustData = ref(null)
 const simulationMaxRounds = ref(null)
+const simulationEnableInfoPlaza = ref(true)
+const simulationEnableTopicCommunity = ref(true)
 
 // Shared agent list: updated by Step2 so Step3 stays in sync (adjust mode)
 const simulationAgents = ref([])
@@ -181,10 +185,14 @@ const handleNextStep = (params = {}) => {
     currentStep.value++
     addLog(t('log.enterStep', { step: currentStep.value, name: stepNames.value[currentStep.value - 1] }))
     
-    // If entering Step 3 from Step 2, record simulation round config
+    // If entering Step 3 from Step 2, record simulation round config and platform selection
     if (currentStep.value === 3 && params.maxRounds) {
       simulationMaxRounds.value = params.maxRounds
       addLog(t('log.customSimRounds', { rounds: params.maxRounds }))
+    }
+    if (currentStep.value === 3) {
+      simulationEnableInfoPlaza.value = params.enableInfoPlaza ?? true
+      simulationEnableTopicCommunity.value = params.enableTopicCommunity ?? true
     }
   }
 }

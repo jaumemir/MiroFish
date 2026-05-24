@@ -153,6 +153,7 @@
     "customTip": "Per a la primera execució, recomanem fortament canviar al 'Mode personalitzat' per reduir les rondes, fer una previsualització ràpida i reduir el risc d'errors",
     "backToGraphBuild": "Torna a la construcció del graf",
     "startDualWorldSim": "Inicia la simulació paral·lela de dos mons",
+    "platformSelectLabel": "Plataformes",
     "profileModalAge": "Edat aparent",
     "profileModalGender": "Gènere aparent",
     "profileModalCountry": "País/Regió",

@@ -153,6 +153,7 @@
     "customTip": "For first-time runs, we strongly recommend switching to 'Custom Mode' to reduce rounds for a quick preview and lower error risk",
     "backToGraphBuild": "Back to Graph Build",
     "startDualWorldSim": "Start Dual-World Parallel Simulation",
+    "platformSelectLabel": "Platforms",
     "profileModalAge": "Apparent Age",
     "profileModalGender": "Apparent Gender",
     "profileModalCountry": "Country/Region",

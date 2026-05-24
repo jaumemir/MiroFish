@@ -94,18 +94,6 @@
         <fieldset style="border:none;padding:0;margin:0;">
         <div class="option-row">
           <label class="toggle-label">
-            <input type="checkbox" v-model="enableInfoPlaza" :disabled="phase >= 1" />
-            <span>{{ $t('step3.enableInfoPlaza') }}</span>
-          </label>
-        </div>
-        <div class="option-row">
-          <label class="toggle-label">
-            <input type="checkbox" v-model="enableTopicCommunity" :disabled="phase >= 1" />
-            <span>{{ $t('step3.enableTopicCommunity') }}</span>
-          </label>
-        </div>
-        <div class="option-row">
-          <label class="toggle-label">
             <input type="checkbox" v-model="enableGraphMemoryUpdate" :disabled="phase >= 1" />
             <span>Graph Memory Update</span>
             <span class="hint">Update agent conversations to graph in real time (needed for report analysis)</span>
@@ -353,7 +341,9 @@ const { pushWithBackTo } = useBackTo('Home')
 
 const props = defineProps({
   simulationId: String,
-  maxRounds: Number, // max rounds passed in from Step2
+  maxRounds: Number,
+  enableInfoPlaza: { type: Boolean, default: true },
+  enableTopicCommunity: { type: Boolean, default: true },
   minutesPerRound: {
     type: Number,
     default: 30 // default 30 minutes per round
@@ -373,15 +363,13 @@ const router = useRouter()
 // State
 const isGeneratingReport = ref(false)
 const phase = ref(0) // 0: not started / paused, 1: running, 2: completed
-const enableInfoPlaza = ref(true)
-const enableTopicCommunity = ref(true)
 const enableGraphMemoryUpdate = ref(true)
 
 const selectedPlatform = computed(() => {
-  if (enableInfoPlaza.value && enableTopicCommunity.value) return 'parallel'
-  if (enableInfoPlaza.value) return 'twitter'
-  if (enableTopicCommunity.value) return 'reddit'
-  return 'parallel' // fallback: ambdues si cap seleccionada
+  if (props.enableInfoPlaza && props.enableTopicCommunity) return 'parallel'
+  if (props.enableInfoPlaza) return 'twitter'
+  if (props.enableTopicCommunity) return 'reddit'
+  return 'parallel'
 })
 const isStarting = ref(false)
 const isStopping = ref(false)

@@ -33,6 +33,8 @@
           :simulationId="currentSimulationId"
           :maxRounds="maxRounds"
           :minutesPerRound="minutesPerRound"
+          :enableInfoPlaza="enableInfoPlaza"
+          :enableTopicCommunity="enableTopicCommunity"
           :projectData="projectData"
           :graphData="graphData"
           :systemLogs="systemLogs"
@@ -75,8 +77,10 @@ const viewMode = ref('split')
 // Data State
 const currentSimulationId = ref(route.params.simulationId)
 const simulationGraphId = ref(null)  // graph_id del graf clonat per a la simulació
-// Read maxRounds from query params at init time so child components get it immediately
+// Read maxRounds and platform selection from query params at init time
 const maxRounds = ref(route.query.maxRounds ? parseInt(route.query.maxRounds) : null)
+const enableInfoPlaza = ref(route.query.enableInfoPlaza !== 'false')
+const enableTopicCommunity = ref(route.query.enableTopicCommunity !== 'false')
 const minutesPerRound = ref(30) // default: 30 minutes per round
 const projectData = ref(null)
 const graphData = ref(null)

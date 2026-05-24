@@ -153,6 +153,7 @@
     "customTip": "Para primeras ejecuciones, recomendamos cambiar a 'Modo personalizado' para reducir rondas, obtener una vista previa rápida y disminuir el riesgo de errores",
     "backToGraphBuild": "Volver a construcción del grafo",
     "startDualWorldSim": "Iniciar simulación paralela de mundo dual",
+    "platformSelectLabel": "Plataformas",
     "profileModalAge": "Edad aparente",
     "profileModalGender": "Género aparente",
     "profileModalCountry": "País/Región",
