@@ -108,16 +108,6 @@
         >
           {{ $t('step3.backToPrevStep') }}
         </button>
-        <!-- Botó inicia (quan phase=0 i no hi ha reprendre) -->
-        <button
-          v-if="phase === 0 && !canResume"
-          class="action-btn primary start"
-          :disabled="isStarting"
-          @click="doStartSimulation"
-        >
-          <span v-if="isStarting" class="loading-spinner-small"></span>
-          {{ isStarting ? $t('step3.initializingSimBtn') : $t('step3.startSimBtn') }}
-        </button>
         <!-- Botó atura (quan s'executa) -->
         <button
           v-if="phase === 1"
@@ -893,11 +883,7 @@ onMounted(async () => {
         return
       }
       if (status === 'failed') {
-        // Previous run failed — show UI clean so user can manually start
-        runStatus.value = {}
-        phase.value = 0
-        addLog(t('log.simEndedWithError'))
-        return
+        // Previous run failed — start fresh (force=true will clean up old state)
       }
       if (status === 'stopped') {
         // Simulació pausada: carregar dades existents i oferir reprendre
@@ -911,10 +897,10 @@ onMounted(async () => {
       }
     }
   } catch (err) {
-    // If status check fails, show UI ready for manual start
+    // If status check fails, fall through to start fresh
   }
 
-  // No previous run state — show UI ready for manual start
+  doStartSimulation()
 })
 
 onUnmounted(() => {
