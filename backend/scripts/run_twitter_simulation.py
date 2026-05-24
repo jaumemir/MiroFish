@@ -448,7 +448,7 @@ class TwitterSimulationRunner:
         time_config = self.config.get("time_config", {})
         total_hours = time_config.get("total_simulation_hours", 72)
         minutes_per_round = time_config.get("minutes_per_round", 30)
-        total_rounds = (total_hours * 60) // minutes_per_round
+        total_rounds = int((total_hours * 60) // minutes_per_round)
 
         # If max_rounds is specified it acts as an override: use it directly
         # (truncating or extending relative to the config-derived count).

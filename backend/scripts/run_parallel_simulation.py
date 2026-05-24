@@ -1520,7 +1520,7 @@ async def run_twitter_simulation(
     time_config = config.get("time_config", {})
     total_hours = time_config.get("total_simulation_hours", 72)
     minutes_per_round = time_config.get("minutes_per_round", 30)
-    total_rounds = (total_hours * 60) // minutes_per_round
+    total_rounds = int((total_hours * 60) // minutes_per_round)
 
     if max_rounds is not None and max_rounds > 0 and max_rounds != total_rounds:
         log_info(f"Rounds override: config={total_rounds} -> max_rounds={max_rounds}")
@@ -1727,7 +1727,7 @@ async def run_reddit_simulation(
     time_config = config.get("time_config", {})
     total_hours = time_config.get("total_simulation_hours", 72)
     minutes_per_round = time_config.get("minutes_per_round", 30)
-    total_rounds = (total_hours * 60) // minutes_per_round
+    total_rounds = int((total_hours * 60) // minutes_per_round)
     
     if max_rounds is not None and max_rounds > 0 and max_rounds != total_rounds:
         log_info(f"Rounds override: config={total_rounds} -> max_rounds={max_rounds}")
@@ -1871,7 +1871,7 @@ async def main():
     time_config = config.get("time_config", {})
     total_hours = time_config.get('total_simulation_hours', 72)
     minutes_per_round = time_config.get('minutes_per_round', 30)
-    config_total_rounds = (total_hours * 60) // minutes_per_round
+    config_total_rounds = int((total_hours * 60) // minutes_per_round)
 
     log_manager.info("Simulation parameters:")
     log_manager.info(f"  - Total simulation time: {total_hours} hours")

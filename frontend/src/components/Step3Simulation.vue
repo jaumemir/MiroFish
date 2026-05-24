@@ -523,7 +523,7 @@ const doStartSimulation = async () => {
       }
 
       phase.value = 1
-      runStatus.value = res.data
+      runStatus.value = { ...res.data, runner_status: res.data.runner_status || 'starting' }
 
       startStatusPolling()
       startDetailPolling()
@@ -596,7 +596,7 @@ const handleResumeSimulation = async () => {
       }
       canResume.value = false
       phase.value = 1
-      runStatus.value = res.data
+      runStatus.value = { ...res.data, runner_status: res.data.runner_status || 'starting' }
       startStatusPolling()
       startDetailPolling()
     } else {
