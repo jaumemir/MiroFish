@@ -236,7 +236,7 @@ class SimulationRunner:
             # Zombie detection: if state is RUNNING but no active process exists
             # (e.g. after a container restart), mark it as STOPPED so the frontend
             # can recover instead of polling forever.
-            if state.runner_status == RunnerStatus.RUNNING and simulation_id not in cls._processes:
+            if state.runner_status in (RunnerStatus.RUNNING, RunnerStatus.STARTING) and simulation_id not in cls._processes:
                 state.runner_status = RunnerStatus.STOPPED
                 state.twitter_running = False
                 state.reddit_running = False
@@ -339,10 +339,15 @@ class SimulationRunner:
         Returns:
             SimulationRunState
         """
-        # Check if already running
+        # Check if already running (STARTING is also blocked unless the caller clears state first)
         existing = cls.get_run_state(simulation_id)
         if existing and existing.runner_status in [RunnerStatus.RUNNING, RunnerStatus.STARTING]:
-            raise ValueError(f"Simulation is already running: {simulation_id}")
+            # If stuck in STARTING with no process, allow restart by clearing stale state
+            if existing.runner_status == RunnerStatus.STARTING and not existing.process_pid:
+                logger.warning(f"Clearing stale STARTING state for {simulation_id}")
+                cls._run_states.pop(simulation_id, None)
+            else:
+                raise ValueError(f"Simulation is already running: {simulation_id}")
 
         # Load simulation config
         sim_dir = os.path.join(cls.RUN_STATE_DIR, simulation_id)
@@ -479,9 +484,15 @@ class SimulationRunner:
             logger.info(f"Simulation started: {simulation_id}, pid={process.pid}, platform={platform}")
 
         except Exception as e:
+            logger.error(f"Failed to start simulation subprocess: {simulation_id}, error={e}")
             state.runner_status = RunnerStatus.FAILED
             state.error = str(e)
-            cls._save_run_state(state)
+            try:
+                cls._save_run_state(state)
+            except Exception as save_err:
+                logger.error(f"Also failed to save run state after subprocess error: {save_err}")
+                # Keep state in memory at least
+                cls._run_states[simulation_id] = state
             raise
 
         return state

@@ -1863,12 +1863,18 @@ def start_simulation():
                                 "error": t('api.simRunningForceHint')
                             }), 400
 
-                # If in force mode, clear run logs
+                # If in force mode, clear run logs and stop any lingering graph updater
                 if force:
                     logger.info(f"Force mode: clearing simulation logs for {simulation_id}")
                     cleanup_result = SimulationRunner.cleanup_simulation_logs(simulation_id)
                     if not cleanup_result.get("success"):
                         logger.warning(f"Warning while clearing logs: {cleanup_result.get('errors')}")
+                    # Stop any lingering graph memory updater from a previous run
+                    try:
+                        from .zep_graph_memory_updater import ZepGraphMemoryManager
+                        ZepGraphMemoryManager.stop_updater(simulation_id)
+                    except Exception as _gu_err:
+                        logger.warning(f"Could not stop graph updater on force restart: {_gu_err}")
                     force_restarted = True
 
                 # Process does not exist or has ended; reset status to ready
