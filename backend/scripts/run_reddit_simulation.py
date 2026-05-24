@@ -131,6 +131,151 @@ except ImportError as e:
     sys.exit(1)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Context-compaction: Reddit agents accumulate long conversation histories that
+# exceed the model's context window. Before every LLM call, count tokens; if
+# they exceed COMPACTION_THRESHOLD, summarise the history with LLM_SMALL and
+# replace it with a single compact record.
+# ─────────────────────────────────────────────────────────────────────────────
+COMPACTION_THRESHOLD = int(os.environ.get("AGENT_COMPACTION_THRESHOLD", "150000"))
+COMPACTION_TARGET    = int(os.environ.get("AGENT_COMPACTION_TARGET",    "40000"))
+
+
+def _create_small_client():
+    from openai import OpenAI as _OpenAI
+    api_key  = os.environ.get("LLM_SMALL_API_KEY")  or os.environ.get("LLM_API_KEY", "")
+    base_url = os.environ.get("LLM_SMALL_BASE_URL")  or os.environ.get("LLM_BASE_URL", "")
+    model    = os.environ.get("LLM_SMALL_MODEL_NAME") or os.environ.get("LLM_MODEL_NAME", "gpt-4o-mini")
+    return _OpenAI(api_key=api_key, base_url=base_url), model
+
+
+_small_client = None
+_small_model  = None
+
+
+def _get_small_client():
+    global _small_client, _small_model
+    if _small_client is None:
+        _small_client, _small_model = _create_small_client()
+    return _small_client, _small_model
+
+
+def _count_memory_tokens(agent) -> int:
+    try:
+        messages, num_tokens = agent.memory.get_context()
+        return num_tokens
+    except Exception:
+        return 0
+
+
+def _compact_agent_memory(agent) -> bool:
+    try:
+        from camel.messages import BaseMessage
+        from camel.types import OpenAIBackendRole
+        from camel.memories.records import MemoryRecord
+
+        storage = agent.memory._chat_history_block.storage
+        all_records = storage.load()
+
+        if len(all_records) < 4:
+            return False
+
+        system_records = [
+            r for r in all_records
+            if r.get("role_at_backend") in (
+                OpenAIBackendRole.SYSTEM.value,
+                OpenAIBackendRole.DEVELOPER.value,
+                "system", "developer",
+            )
+        ]
+        history_records = [
+            r for r in all_records
+            if r.get("role_at_backend") not in (
+                OpenAIBackendRole.SYSTEM.value,
+                OpenAIBackendRole.DEVELOPER.value,
+                "system", "developer",
+            )
+        ]
+
+        if not history_records:
+            return False
+
+        history_text = ""
+        for r in history_records:
+            msg = r.get("message", {})
+            role    = r.get("role_at_backend", "user")
+            content = msg.get("content", "") if isinstance(msg, dict) else str(msg)
+            history_text += f"[{role}]: {content}\n\n"
+        history_text = history_text[-200_000:]
+
+        client, model = _get_small_client()
+        summary_prompt = (
+            "You are a memory compaction assistant. "
+            "Below is a social-media simulation agent's conversation history. "
+            "Summarise it concisely, preserving: the agent's identity, opinions, "
+            "past actions (posts, likes, follows, comments), topics discussed, "
+            "emotional tone, and any key relationships. "
+            f"Keep the summary under {COMPACTION_TARGET // 4} words.\n\n"
+            f"HISTORY:\n{history_text}"
+        )
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": summary_prompt}],
+            max_tokens=COMPACTION_TARGET // 4,
+            temperature=0.3,
+        )
+        summary = response.choices[0].message.content.strip()
+
+        summary_content = (
+            f"[COMPACTED MEMORY — summary of {len(history_records)} prior turns]\n"
+            f"{summary}"
+        )
+        summary_msg = BaseMessage.make_assistant_message(
+            role_name="Assistant",
+            content=summary_content,
+        )
+        summary_record = MemoryRecord(
+            message=summary_msg,
+            role_at_backend=OpenAIBackendRole.ASSISTANT,
+        )
+
+        new_records = system_records + [summary_record.to_dict()]
+        storage.memory_list.clear()
+        storage.memory_list.extend(new_records)
+
+        agent_id = getattr(agent, 'social_agent_id', '?')
+        print(f"  [Reddit] Agent {agent_id}: memory compacted "
+              f"({len(history_records)} turns → 1 summary)", flush=True)
+        return True
+
+    except Exception as e:
+        agent_id = getattr(agent, 'social_agent_id', '?')
+        print(f"  [Reddit] Agent {agent_id}: compaction failed: {e}", flush=True)
+        return False
+
+
+_compaction_patch_applied = False
+
+
+def _patch_social_agent_compaction():
+    global _compaction_patch_applied
+    if _compaction_patch_applied:
+        return
+    _compaction_patch_applied = True
+
+    from oasis.social_agent.agent import SocialAgent
+
+    _original_perform = SocialAgent.perform_action_by_llm
+
+    async def _perform_with_compaction(self):
+        tokens = _count_memory_tokens(self)
+        if tokens > COMPACTION_THRESHOLD:
+            _compact_agent_memory(self)
+        return await _original_perform(self)
+
+    SocialAgent.perform_action_by_llm = _perform_with_compaction
+
+
 # IPC相关常量
 IPC_COMMANDS_DIR = "ipc_commands"
 IPC_RESPONSES_DIR = "ipc_responses"
@@ -569,12 +714,14 @@ class RedditSimulationRunner:
             model=model,
             available_actions=self.AVAILABLE_ACTIONS,
         )
-        
+
+        _patch_social_agent_compaction()
+
         db_path = self._get_db_path()
         if os.path.exists(db_path):
             os.remove(db_path)
             print(f"已删除旧数据库: {db_path}")
-        
+
         print("创建OASIS环境...")
         self.env = oasis.make(
             agent_graph=self.agent_graph,
@@ -582,7 +729,7 @@ class RedditSimulationRunner:
             database_path=db_path,
             semaphore=30,  # 限制最大并发 LLM 请求数，防止 API 过载
         )
-        
+
         await self.env.reset()
         print("环境初始化完成\n")
         
