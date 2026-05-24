@@ -1828,13 +1828,14 @@ watch(() => props.simulationId, (newId) => {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  min-width: 240px;
+  width: 260px;
   background: #FFFFFF;
   border: 1px solid #E5E7EB;
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
   max-height: 320px;
   overflow-y: auto;
+  overflow-x: hidden;
   z-index: 100;
 }
 
