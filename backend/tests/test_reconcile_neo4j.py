@@ -92,8 +92,6 @@ def test_multiple_group_ids_mixed():
 
 
 import sqlite3
-import tempfile
-import os
 
 
 def _make_test_db(graphs=None, simulations=None, projects=None):

@@ -95,53 +95,57 @@ def read_sqlite(conn: _sqlite3.Connection) -> dict[str, Any]:
         graph_rows         : list[dict] — files de graphs amb external_id vàlid
         warnings           : list[str] — inconsistències detectades (no generen eliminació)
     """
+    _original_factory = conn.row_factory
     conn.row_factory = _sqlite3.Row
-    warnings = []
+    try:
+        warnings = []
 
-    # Llegir graphs
-    known_external_ids: set[str] = set()
-    graph_rows: list[dict[str, Any]] = []
+        # Llegir graphs
+        known_external_ids: set[str] = set()
+        graph_rows: list[dict[str, Any]] = []
 
-    for row in conn.execute("SELECT id, project_id, backend, external_id FROM graphs").fetchall():
-        gid = row["id"]
-        backend = row["backend"] or ""
-        ext_id = row["external_id"]
+        for row in conn.execute("SELECT id, project_id, backend, external_id FROM graphs").fetchall():
+            gid = row["id"]
+            backend = row["backend"] or ""
+            ext_id = row["external_id"]
 
-        if backend != "graphiti":
-            warnings.append(
-                f"GraphModel id='{gid}' backend='{backend}' — ignorat per a reconciliació Neo4j"
-            )
-            continue
+            if backend != "graphiti":
+                warnings.append(
+                    f"GraphModel id='{gid}' backend='{backend}' — ignorat per a reconciliació Neo4j"
+                )
+                continue
 
-        if not ext_id:
-            warnings.append(
-                f"GraphModel id='{gid}' backend='graphiti' external_id=NULL — sense external_id, no reconciliable"
-            )
-            continue
+            if not ext_id:
+                warnings.append(
+                    f"GraphModel id='{gid}' backend='graphiti' external_id=NULL — sense external_id, no reconciliable"
+                )
+                continue
 
-        known_external_ids.add(ext_id)
-        graph_rows.append({
-            "graph_id": gid,
-            "project_id": row["project_id"],
-            "external_id": ext_id,
-        })
+            known_external_ids.add(ext_id)
+            graph_rows.append({
+                "graph_id": gid,
+                "project_id": row["project_id"],
+                "external_id": ext_id,
+            })
 
-    # Llegir simulations
-    known_sim_ids: set[str] = {
-        row["id"]
-        for row in conn.execute("SELECT id FROM simulations").fetchall()
-    }
+        # Llegir simulations
+        known_sim_ids: set[str] = {
+            row["id"]
+            for row in conn.execute("SELECT id FROM simulations").fetchall()
+        }
 
-    # Llegir projects
-    known_project_ids: set[str] = {
-        row["id"]
-        for row in conn.execute("SELECT id FROM projects").fetchall()
-    }
+        # Llegir projects
+        known_project_ids: set[str] = {
+            row["id"]
+            for row in conn.execute("SELECT id FROM projects").fetchall()
+        }
 
-    return {
-        "known_external_ids": known_external_ids,
-        "known_sim_ids": known_sim_ids,
-        "known_project_ids": known_project_ids,
-        "graph_rows": graph_rows,
-        "warnings": warnings,
-    }
+        return {
+            "known_external_ids": known_external_ids,
+            "known_sim_ids": known_sim_ids,
+            "known_project_ids": known_project_ids,
+            "graph_rows": graph_rows,
+            "warnings": warnings,
+        }
+    finally:
+        conn.row_factory = _original_factory
