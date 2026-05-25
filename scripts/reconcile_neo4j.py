@@ -451,7 +451,8 @@ def _parse_args() -> _argparse.Namespace:
     parser.add_argument("--neo4j-user",      default=None, help="Usuari Neo4j")
     parser.add_argument("--neo4j-password",  default=None, help="Contrasenya Neo4j")
     parser.add_argument("--output-dir",      default=None, help="Directori de sortida (defecte: scripts/)")
-    parser.add_argument("--log-level",       default="INFO", choices=["DEBUG", "INFO", "WARNING"])
+    parser.add_argument("--log-level",       default="INFO", choices=["DEBUG", "INFO", "WARNING"],
+                        help="Nivell de verbositat (defecte: INFO)")
     return parser.parse_args()
 
 
