@@ -220,3 +220,76 @@ def test_read_neo4j_group_ids_empty():
 
     result = read_neo4j_group_ids(mock_driver)
     assert result == set()
+
+
+def test_generate_log_content_includes_all_sections():
+    from reconcile_neo4j import generate_log_content, OrphanCategory
+
+    neo4j_gids = {"mirofish_orphan", "mirofish_valid"}
+    sqlite_data = {
+        "known_external_ids": {"mirofish_valid"},
+        "known_sim_ids": set(),
+        "known_project_ids": {"p1"},
+        "graph_rows": [{"external_id": "mirofish_valid", "project_id": "p1", "graph_id": "g1"}],
+        "warnings": ["GraphModel id='gx' backend='zep' — ignorat"],
+    }
+    orphans = [
+        {"group_id": "mirofish_orphan", "category": OrphanCategory.BASE_ORPHAN,
+         "reason": "Cap GraphModel amb external_id='mirofish_orphan' a la BBDD"},
+    ]
+    log = generate_log_content(
+        neo4j_uri="neo4j+s://test",
+        db_path="/tmp/test.db",
+        neo4j_gids=neo4j_gids,
+        sqlite_data=sqlite_data,
+        orphans=orphans,
+        delete_script_path="scripts/reconcile_delete.py",
+        log_path="scripts/reconcile_test.log",
+        timestamp="2026-05-25 14:30:00",
+    )
+    assert "[PAS 1]" in log
+    assert "[PAS 2]" in log
+    assert "[PAS 3]" in log
+    assert "RESUM" in log
+    assert "BASE_ORPHAN" in log
+    assert "mirofish_orphan" in log
+    assert "ADVERTÈNCIA" in log
+    assert "✓ VALID" in log
+    assert "reconcile_delete.py" in log
+
+
+def test_generate_delete_script_contains_orphans():
+    from reconcile_neo4j import generate_delete_script, OrphanCategory
+
+    orphans = [
+        {"group_id": "mirofish_orphan1", "category": OrphanCategory.BASE_ORPHAN,
+         "reason": "Cap GraphModel"},
+        {"group_id": "mirofish_sim_aabbcc112233_sim", "category": OrphanCategory.SIM_ORPHAN,
+         "reason": "Cap SimulationModel"},
+    ]
+    script = generate_delete_script(
+        orphans=orphans,
+        neo4j_uri="neo4j+s://test",
+        log_path="scripts/reconcile_test.log",
+        timestamp="2026-05-25 14:30:00",
+    )
+    assert "mirofish_orphan1" in script
+    assert "BASE_ORPHAN" in script
+    assert "mirofish_sim_aabbcc112233_sim" in script
+    assert "SIM_ORPHAN" in script
+    assert "--execute" in script
+    assert "dry-run" in script.lower() or "dry_run" in script.lower()
+    assert "DETACH DELETE" in script
+
+
+def test_generate_delete_script_no_orphans():
+    from reconcile_neo4j import generate_delete_script
+
+    script = generate_delete_script(
+        orphans=[],
+        neo4j_uri="neo4j+s://test",
+        log_path="scripts/reconcile_test.log",
+        timestamp="2026-05-25 14:30:00",
+    )
+    assert "ORPHANS: list = [" in script
+    assert "Orfes detectats: 0" in script
