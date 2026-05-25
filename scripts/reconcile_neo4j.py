@@ -90,8 +90,10 @@ def classify_group_ids(
     return orphans
 
 
-def read_sqlite(conn: _sqlite3.Connection) -> dict[str, Any]:
-    """Llegeix les taules graphs, simulations i projects de la BBDD SQLite.
+def read_sqlite(conn) -> dict[str, Any]:
+    """Llegeix les taules graphs, simulations i projects de la BBDD.
+
+    Compatible amb connexions sqlite3 i psycopg2 (DictConnection).
 
     Retorna:
         known_external_ids : set[str] — external_ids de graphs amb backend=graphiti
@@ -100,12 +102,12 @@ def read_sqlite(conn: _sqlite3.Connection) -> dict[str, Any]:
         graph_rows         : list[dict] — files de graphs amb external_id vàlid
         warnings           : list[str] — inconsistències detectades (no generen eliminació)
     """
-    _original_factory = conn.row_factory
-    conn.row_factory = _sqlite3.Row
+    _is_sqlite = isinstance(conn, _sqlite3.Connection)
+    if _is_sqlite:
+        _original_factory = conn.row_factory
+        conn.row_factory = _sqlite3.Row
     try:
         warnings = []
-
-        # Llegir graphs
         known_external_ids: set[str] = set()
         graph_rows: list[dict[str, Any]] = []
 
@@ -133,13 +135,11 @@ def read_sqlite(conn: _sqlite3.Connection) -> dict[str, Any]:
                 "external_id": ext_id,
             })
 
-        # Llegir simulations
         known_sim_ids: set[str] = {
             row["id"]
             for row in conn.execute("SELECT id FROM simulations").fetchall()
         }
 
-        # Llegir projects
         known_project_ids: set[str] = {
             row["id"]
             for row in conn.execute("SELECT id FROM projects").fetchall()
@@ -153,7 +153,8 @@ def read_sqlite(conn: _sqlite3.Connection) -> dict[str, Any]:
             "warnings": warnings,
         }
     finally:
-        conn.row_factory = _original_factory
+        if _is_sqlite:
+            conn.row_factory = _original_factory
 
 
 def read_neo4j_group_ids(driver: Any) -> set[str]:
