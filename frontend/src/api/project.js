@@ -64,7 +64,7 @@ export async function downloadSimulationLog(simulationId) {
   const res = await service.get(`/api/simulation/${simulationId}/download/log`, {
     responseType: 'blob',
   })
-  triggerDownload(res, `simulation_${simulationId}_log.json`)
+  triggerDownload(res, `simulation_${simulationId}.log`)
 }
 
 export async function getSimulationDetail(simulationId) {

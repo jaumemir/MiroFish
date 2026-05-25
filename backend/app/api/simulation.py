@@ -24,16 +24,9 @@ logger = get_logger('mirofish.api.simulation')
 
 
 def _get_simulation_log_path(simulation_id: str) -> str:
-    """Return path to the combined actions log for a simulation."""
-    sim_dir = os.path.join(Config.OASIS_SIMULATION_DATA_DIR, simulation_id)
-    for candidate in [
-        os.path.join(sim_dir, "actions.jsonl"),
-        os.path.join(sim_dir, "twitter", "actions.jsonl"),
-        os.path.join(sim_dir, "reddit", "actions.jsonl"),
-    ]:
-        if os.path.exists(candidate):
-            return candidate
-    return ""
+    """Return path to simulation.log, or empty string if not found."""
+    path = os.path.join(Config.OASIS_SIMULATION_DATA_DIR, simulation_id, "simulation.log")
+    return path if os.path.exists(path) else ""
 
 
 # Interview prompt optimization prefix
@@ -1009,8 +1002,18 @@ def delete_simulation(simulation_id: str):
                 db.delete(sim_model)
                 db.commit()
 
-        # Remove filesystem data regardless of DB presence
+        # Delete per-simulation graph from Neo4j/Zep if it exists
         manager = SimulationManager()
+        sim_state = manager.get_simulation(simulation_id)
+        if sim_state and sim_state.graph_id_simulation:
+            try:
+                from ..graph import get_graph_backend as _get_gb
+                _get_gb().delete_graph(sim_state.graph_id_simulation)
+                logger.info(f"Deleted simulation graph: {sim_state.graph_id_simulation}")
+            except Exception as graph_err:
+                logger.warning(f"Could not delete simulation graph {sim_state.graph_id_simulation}: {graph_err}")
+
+        # Remove filesystem data regardless of DB presence
         manager._simulations.pop(simulation_id, None)
         sim_dir = manager._get_simulation_dir(simulation_id)
         if os.path.isdir(sim_dir):
@@ -3600,7 +3603,7 @@ def download_simulation_report(simulation_id: str):
 
 @simulation_bp.route('/<simulation_id>/download/log', methods=['GET'])
 def download_simulation_log(simulation_id: str):
-    """Download the raw simulation actions log (JSONL)."""
+    """Download the main simulation log file."""
     log_path = _get_simulation_log_path(simulation_id)
     if not log_path:
         return jsonify({"success": False, "error": "Log file not found"}), 404
@@ -3611,12 +3614,12 @@ def download_simulation_log(simulation_id: str):
     except OSError as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-    filename = f"simulation_{simulation_id}_log.jsonl"
+    filename = f"simulation_{simulation_id}.log"
     return Response(
         data,
         status=200,
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
-            "Content-Type": "application/x-ndjson",
+            "Content-Type": "text/plain; charset=utf-8",
         }
     )

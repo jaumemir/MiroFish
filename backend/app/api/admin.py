@@ -176,12 +176,36 @@ def delete_admin_project(project_id):
 @admin_bp.route('/simulations/<simulation_id>', methods=['DELETE'])
 @require_admin
 def delete_admin_simulation(simulation_id):
+    import shutil, os, logging
+    from ..services.simulation_manager import SimulationManager
+    from ..config import Config
+
+    logger = logging.getLogger('mirofish.api.admin')
+
     with get_session() as db:
         sim = db.get(SimulationModel, simulation_id)
         if not sim:
             return jsonify({'success': False, 'error': 'Simulation not found'}), 404
         db.delete(sim)
         db.commit()
+
+    # Delete per-simulation graph from Neo4j/Zep if it exists
+    manager = SimulationManager()
+    sim_state = manager.get_simulation(simulation_id)
+    if sim_state and sim_state.graph_id_simulation:
+        try:
+            from ..graph import get_graph_backend as _get_gb
+            _get_gb().delete_graph(sim_state.graph_id_simulation)
+            logger.info(f"Deleted simulation graph: {sim_state.graph_id_simulation}")
+        except Exception as graph_err:
+            logger.warning(f"Could not delete simulation graph {sim_state.graph_id_simulation}: {graph_err}")
+
+    # Remove filesystem data
+    manager._simulations.pop(simulation_id, None)
+    sim_dir = manager._get_simulation_dir(simulation_id)
+    if os.path.isdir(sim_dir):
+        shutil.rmtree(sim_dir, ignore_errors=True)
+
     return jsonify({'success': True})
 
 

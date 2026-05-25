@@ -43,8 +43,8 @@ class TestSourceDownload:
 
 class TestSimulationDownloads:
     def test_download_log_endpoint_exists(self, client, tmp_path):
-        log_file = tmp_path / "actions.jsonl"
-        log_file.write_text('{"action": "test"}\n')
+        log_file = tmp_path / "simulation.log"
+        log_file.write_text("2024-01-01 INFO simulation started\n")
 
         with patch('app.api.simulation._get_simulation_log_path',
                    return_value=str(log_file)):
