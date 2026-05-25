@@ -408,7 +408,9 @@ def open_db(db_url: str):
 
     Retorna una connexió DBAPI2 compatible amb read_sqlite().
     """
-    if db_url.startswith("postgresql://") or db_url.startswith("postgres://"):
+    # Accepta postgresql://, postgres://, postgresql+psycopg2://, etc.
+    _pg_prefixes = ("postgresql://", "postgres://", "postgresql+", "postgres+")
+    if any(db_url.startswith(p) for p in _pg_prefixes):
         try:
             import psycopg2
             import psycopg2.extras
@@ -416,7 +418,12 @@ def open_db(db_url: str):
             print("ERROR: psycopg2 no disponible. Instal·la'l amb: pip install psycopg2-binary",
                   file=_sys.stderr)
             _sys.exit(1)
-        conn = psycopg2.connect(db_url, connection_factory=psycopg2.extras.DictConnection)
+        # psycopg2 no entén el format SQLAlchemy (postgresql+driver://...)
+        # Normalitzem a postgresql://...
+        import re as _re
+        pg_url = _re.sub(r"^postgresql\+\w+://", "postgresql://", db_url)
+        pg_url = _re.sub(r"^postgres\+\w+://", "postgresql://", pg_url)
+        conn = psycopg2.connect(pg_url, connection_factory=psycopg2.extras.DictConnection)
         conn.autocommit = True
         return conn
 
