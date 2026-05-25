@@ -12,6 +12,7 @@ Detecta group_ids orfes a Neo4j i genera:
           [--output-dir DIR] [--log-level LEVEL]
 """
 import re
+import sqlite3 as _sqlite3
 from enum import Enum
 from typing import Any
 
@@ -82,3 +83,65 @@ def classify_group_ids(
             })
 
     return orphans
+
+
+def read_sqlite(conn: _sqlite3.Connection) -> dict[str, Any]:
+    """Llegeix les taules graphs, simulations i projects de la BBDD SQLite.
+
+    Retorna:
+        known_external_ids : set[str] — external_ids de graphs amb backend=graphiti
+        known_sim_ids      : set[str] — ids de totes les simulacions
+        known_project_ids  : set[str] — ids de tots els projectes
+        graph_rows         : list[dict] — files de graphs amb external_id vàlid
+        warnings           : list[str] — inconsistències detectades (no generen eliminació)
+    """
+    conn.row_factory = _sqlite3.Row
+    warnings = []
+
+    # Llegir graphs
+    known_external_ids: set[str] = set()
+    graph_rows: list[dict[str, Any]] = []
+
+    for row in conn.execute("SELECT id, project_id, backend, external_id FROM graphs").fetchall():
+        gid = row["id"]
+        backend = row["backend"] or ""
+        ext_id = row["external_id"]
+
+        if backend != "graphiti":
+            warnings.append(
+                f"GraphModel id='{gid}' backend='{backend}' — ignorat per a reconciliació Neo4j"
+            )
+            continue
+
+        if not ext_id:
+            warnings.append(
+                f"GraphModel id='{gid}' backend='graphiti' external_id=NULL — sense external_id, no reconciliable"
+            )
+            continue
+
+        known_external_ids.add(ext_id)
+        graph_rows.append({
+            "graph_id": gid,
+            "project_id": row["project_id"],
+            "external_id": ext_id,
+        })
+
+    # Llegir simulations
+    known_sim_ids: set[str] = {
+        row["id"]
+        for row in conn.execute("SELECT id FROM simulations").fetchall()
+    }
+
+    # Llegir projects
+    known_project_ids: set[str] = {
+        row["id"]
+        for row in conn.execute("SELECT id FROM projects").fetchall()
+    }
+
+    return {
+        "known_external_ids": known_external_ids,
+        "known_sim_ids": known_sim_ids,
+        "known_project_ids": known_project_ids,
+        "graph_rows": graph_rows,
+        "warnings": warnings,
+    }

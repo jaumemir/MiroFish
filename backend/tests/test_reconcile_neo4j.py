@@ -89,3 +89,99 @@ def test_multiple_group_ids_mixed():
     assert OrphanCategory.SIM_ORPHAN in categories
     assert OrphanCategory.DANGLING_PROJECT in categories
     assert len(result) == 3
+
+
+import sqlite3
+import tempfile
+import os
+
+
+def _make_test_db(graphs=None, simulations=None, projects=None):
+    """Crea una BBDD SQLite en memòria amb les taules necessàries."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""
+        CREATE TABLE graphs (
+            id TEXT PRIMARY KEY,
+            project_id TEXT,
+            backend TEXT,
+            external_id TEXT,
+            status TEXT
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE simulations (
+            id TEXT PRIMARY KEY,
+            project_id TEXT,
+            graph_id TEXT,
+            status TEXT
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE projects (
+            id TEXT PRIMARY KEY,
+            name TEXT
+        )
+    """)
+    for row in (graphs or []):
+        conn.execute(
+            "INSERT INTO graphs VALUES (?,?,?,?,?)",
+            (row["id"], row["project_id"], row["backend"], row.get("external_id"), row.get("status", "ready"))
+        )
+    for row in (simulations or []):
+        conn.execute(
+            "INSERT INTO simulations VALUES (?,?,?,?)",
+            (row["id"], row.get("project_id"), row.get("graph_id"), row.get("status", "completed"))
+        )
+    for row in (projects or []):
+        conn.execute("INSERT INTO projects VALUES (?,?)", (row["id"], row.get("name", "")))
+    conn.commit()
+    return conn
+
+
+def test_read_sqlite_basic():
+    from reconcile_neo4j import read_sqlite
+    conn = _make_test_db(
+        graphs=[{"id": "g1", "project_id": "p1", "backend": "graphiti", "external_id": "mirofish_abc"}],
+        simulations=[{"id": "sim_aabbcc112233", "project_id": "p1"}],
+        projects=[{"id": "p1"}],
+    )
+    result = read_sqlite(conn)
+    assert "mirofish_abc" in result["known_external_ids"]
+    assert "sim_aabbcc112233" in result["known_sim_ids"]
+    assert "p1" in result["known_project_ids"]
+    assert len(result["graph_rows"]) == 1
+    assert result["graph_rows"][0]["graph_id"] == "g1"
+    assert result["warnings"] == []
+
+
+def test_read_sqlite_warns_graphiti_null_external_id():
+    from reconcile_neo4j import read_sqlite
+    conn = _make_test_db(
+        graphs=[{"id": "g1", "project_id": "p1", "backend": "graphiti", "external_id": None}],
+        projects=[{"id": "p1"}],
+    )
+    result = read_sqlite(conn)
+    assert result["known_external_ids"] == set()
+    assert any("external_id=NULL" in w for w in result["warnings"])
+
+
+def test_read_sqlite_warns_zep_backend():
+    from reconcile_neo4j import read_sqlite
+    conn = _make_test_db(
+        graphs=[{"id": "g2", "project_id": "p1", "backend": "zep", "external_id": "zep_xyz"}],
+        projects=[{"id": "p1"}],
+    )
+    result = read_sqlite(conn)
+    assert "zep_xyz" not in result["known_external_ids"]
+    assert any("backend='zep'" in w for w in result["warnings"])
+
+
+def test_read_sqlite_empty_tables():
+    from reconcile_neo4j import read_sqlite
+    conn = _make_test_db()
+    result = read_sqlite(conn)
+    assert result["known_external_ids"] == set()
+    assert result["known_sim_ids"] == set()
+    assert result["known_project_ids"] == set()
+    assert result["graph_rows"] == []
+    assert result["warnings"] == []
