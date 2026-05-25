@@ -166,6 +166,23 @@ def read_sqlite(conn) -> dict[str, Any]:
     }
 
 
+def read_valid_from_log(log_path: str) -> set[str]:
+    """Extreu els group_ids marcats com VALID d'un log de reconciliació anterior.
+
+    Útil per passar la llista de vàlids d'una BBDD com a excepcions en la
+    reconciliació d'una altra BBDD contra el mateix Neo4j.
+    """
+    import re as _re2
+    valid_re = _re2.compile(r"^\[PAS 3\] ✓ (?:VALID|EXCEPCIONAT)\s+(\S+)")
+    gids: set[str] = set()
+    with open(log_path, encoding="utf-8") as f:
+        for line in f:
+            m = valid_re.match(line.rstrip())
+            if m:
+                gids.add(m.group(1))
+    return gids
+
+
 def read_neo4j_group_ids(driver: Any) -> set[str]:
     """Consulta Neo4j i retorna tots els group_id únics que existeixen.
 
@@ -191,6 +208,7 @@ def generate_log_content(
     delete_script_path: str,
     log_path: str,
     timestamp: str,
+    excepted: set[str] | None = None,
 ) -> str:
     """Genera el contingut complet del log de reconciliació."""
     lines = []
@@ -216,6 +234,7 @@ def generate_log_content(
     lines.append("")
 
     # PAS 3
+    excepted_gids: set[str] = set(excepted or [])
     lines.append("[PAS 3] Creuament i classificació:")
     orphan_gids = {o["group_id"] for o in orphans}
     orphan_map = {o["group_id"]: o for o in orphans}
@@ -223,6 +242,8 @@ def generate_log_content(
         if gid in orphan_gids:
             o = orphan_map[gid]
             lines.append(f"[PAS 3] ✗ {o['category'].value:<20} {gid} — {o['reason']}")
+        elif gid in excepted_gids:
+            lines.append(f"[PAS 3] ✓ EXCEPCIONAT         {gid}")
         else:
             lines.append(f"[PAS 3] ✓ VALID               {gid}")
     lines.append("")
@@ -233,8 +254,9 @@ def generate_log_content(
         counts[o["category"]] = counts.get(o["category"], 0) + 1
 
     lines.append("=== RESUM ===")
-    total_valid = len(neo4j_gids) - len(orphans)
+    total_valid = len(neo4j_gids) - len(orphans) - len(excepted_gids & neo4j_gids)
     lines.append(f"  VÀLIDS:           {total_valid}")
+    lines.append(f"  EXCEPCIONATS:     {len(excepted_gids & neo4j_gids)}")
     for cat in OrphanCategory:
         lines.append(f"  {cat.value:<20} {counts.get(cat, 0)}")
     lines.append(f"  TOTAL ORFES:      {len(orphans)}")
@@ -462,6 +484,12 @@ def _parse_args() -> _argparse.Namespace:
     parser.add_argument("--output-dir",      default=None, help="Directori de sortida (defecte: scripts/)")
     parser.add_argument("--log-level",       default="INFO", choices=["DEBUG", "INFO", "WARNING"],
                         help="Nivell de verbositat (defecte: INFO)")
+    parser.add_argument("--except",          dest="except_ids", nargs="+", default=[],
+                        metavar="GROUP_ID",
+                        help="Group IDs a excepcionar (no s'inclouen al script d'eliminació)")
+    parser.add_argument("--except-log",      dest="except_logs", nargs="+", default=[],
+                        metavar="LOG_PATH",
+                        help="Logs de reconciliació anteriors dels quals extreure els VALID/EXCEPCIONAT")
     return parser.parse_args()
 
 
@@ -517,15 +545,27 @@ def main() -> None:
     for w in sqlite_data["warnings"]:
         print(f"[PAS 2] ADVERTÈNCIA: {w}")
 
+    # Carregar excepcions
+    excepted: set[str] = set(args.except_ids or [])
+    for log_file in (args.except_logs or []):
+        try:
+            excepted |= read_valid_from_log(log_file)
+        except OSError as exc:
+            print(f"AVÍS: No s'ha pogut llegir --except-log '{log_file}': {exc}", file=_sys.stderr)
+    if excepted:
+        print(f"[EXCEPCIONATS] {len(excepted)} group_id(s) excepcionats.")
+
     # PAS 3: Classificar
     print("[PAS 3] Classificant orfes...")
-    orphans = classify_group_ids(
+    all_orphans = classify_group_ids(
         neo4j_gids=neo4j_gids,
         known_external_ids=sqlite_data["known_external_ids"],
         known_sim_ids=sqlite_data["known_sim_ids"],
         known_project_ids=sqlite_data["known_project_ids"],
         graph_rows=sqlite_data["graph_rows"],
     )
+    # Els orfes excepcionats no van al script d'eliminació
+    orphans = [o for o in all_orphans if o["group_id"] not in excepted]
     driver.close()
 
     # Generar log
@@ -538,6 +578,7 @@ def main() -> None:
         delete_script_path=str(delete_path),
         log_path=str(log_path),
         timestamp=timestamp,
+        excepted=excepted,
     )
     log_path.write_text(log_content, encoding="utf-8")
     print(f"\n{log_content}")
