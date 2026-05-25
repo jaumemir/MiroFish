@@ -11,9 +11,14 @@ Detecta group_ids orfes a Neo4j i genera:
           [--neo4j-uri URI] [--neo4j-user USER] [--neo4j-password PASS]
           [--output-dir DIR] [--log-level LEVEL]
 """
+import argparse as _argparse
+import os as _os
 import re
 import sqlite3 as _sqlite3
+import sys as _sys
+from datetime import datetime as _datetime
 from enum import Enum
+from pathlib import Path as _Path
 from typing import Any
 
 
@@ -358,3 +363,180 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 '''
+
+
+def load_config(args: _argparse.Namespace) -> dict[str, str]:
+    """Carrega la configuració des de .env i args CLI.
+
+    Prioritat: args CLI > .env > variables d'entorn > error.
+    """
+    env_file = _Path(args.env_file) if args.env_file else _Path(__file__).parent.parent / ".env"
+
+    env_values: dict[str, str] = {}
+    if env_file.exists():
+        try:
+            from dotenv import dotenv_values
+            env_values = dict(dotenv_values(env_file))
+        except ImportError:
+            pass
+
+    def _get(cli_val, env_key, default=None):
+        if cli_val is not None:
+            return cli_val
+        if env_key in env_values:
+            return env_values[env_key]
+        return _os.environ.get(env_key, default or "")
+
+    db_url = _get(args.db_path, "DATABASE_URL", "")
+
+    return {
+        "db_url":         db_url,
+        "neo4j_uri":      _get(args.neo4j_uri,      "NEO4J_URI",      ""),
+        "neo4j_user":     _get(args.neo4j_user,     "NEO4J_USER",     "neo4j"),
+        "neo4j_password": _get(args.neo4j_password, "NEO4J_PASSWORD", ""),
+        "output_dir":     args.output_dir or str(_Path(__file__).parent),
+    }
+
+
+def open_db(db_url: str):
+    """Obre la connexió a la BBDD (SQLite o PostgreSQL) en mode lectura.
+
+    Detecta el protocol de DATABASE_URL:
+      - sqlite:///path o ruta directa → sqlite3
+      - postgresql:// o postgres://    → psycopg2 (DictConnection per a compatibilitat)
+
+    Retorna una connexió DBAPI2 compatible amb read_sqlite().
+    """
+    if db_url.startswith("postgresql://") or db_url.startswith("postgres://"):
+        try:
+            import psycopg2
+            import psycopg2.extras
+        except ImportError:
+            print("ERROR: psycopg2 no disponible. Instal·la'l amb: pip install psycopg2-binary",
+                  file=_sys.stderr)
+            _sys.exit(1)
+        conn = psycopg2.connect(db_url, connection_factory=psycopg2.extras.DictConnection)
+        conn.autocommit = True
+        return conn
+
+    # SQLite: pot ser sqlite:///path o ruta directa
+    if db_url.startswith("sqlite:///"):
+        db_path = db_url[len("sqlite:///"):]
+    else:
+        db_path = db_url
+
+    if not _os.path.exists(db_path):
+        print(f"ERROR: BBDD SQLite no trobada: {db_path}", file=_sys.stderr)
+        _sys.exit(1)
+
+    conn = _sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    return conn
+
+
+def _parse_args() -> _argparse.Namespace:
+    parser = _argparse.ArgumentParser(
+        description="Reconcilia group_ids Neo4j amb la BBDD de MiroFish (SQLite o PostgreSQL)."
+    )
+    parser.add_argument("--env-file",        default=None, help="Camí al fitxer .env")
+    parser.add_argument("--db-path",         default=None, help="URL o camí de la BBDD (sobreescriu DATABASE_URL del .env)")
+    parser.add_argument("--neo4j-uri",       default=None, help="URI de Neo4j")
+    parser.add_argument("--neo4j-user",      default=None, help="Usuari Neo4j")
+    parser.add_argument("--neo4j-password",  default=None, help="Contrasenya Neo4j")
+    parser.add_argument("--output-dir",      default=None, help="Directori de sortida (defecte: scripts/)")
+    parser.add_argument("--log-level",       default="INFO", choices=["DEBUG", "INFO", "WARNING"])
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = _parse_args()
+    cfg = load_config(args)
+
+    missing = [k for k in ("neo4j_uri", "neo4j_password", "db_url") if not cfg.get(k)]
+    if missing:
+        print(f"ERROR: Falten valors de configuració: {', '.join(missing)}", file=_sys.stderr)
+        print("Comprova el fitxer .env o passa els arguments --neo4j-uri/--neo4j-password/--db-path",
+              file=_sys.stderr)
+        _sys.exit(1)
+
+    timestamp = _datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ts_file   = _datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = _Path(cfg["output_dir"])
+    log_path    = output_dir / f"reconcile_{ts_file}.log"
+    delete_path = output_dir / "reconcile_delete.py"
+
+    if delete_path.exists():
+        print(f"AVÍS: {delete_path} ja existeix i serà sobreescrit.")
+
+    # Connectar Neo4j
+    try:
+        from neo4j import GraphDatabase
+        driver = GraphDatabase.driver(
+            cfg["neo4j_uri"],
+            auth=(cfg["neo4j_user"], cfg["neo4j_password"]),
+        )
+    except Exception as exc:
+        print(f"ERROR: No s'ha pogut connectar a Neo4j ({cfg['neo4j_uri']}): {exc}", file=_sys.stderr)
+        _sys.exit(1)
+
+    # PAS 1: Llegir group_ids de Neo4j
+    print(f"[PAS 1] Llegint group_ids de Neo4j ({cfg['neo4j_uri']})...")
+    try:
+        neo4j_gids = read_neo4j_group_ids(driver)
+    except Exception as exc:
+        print(f"ERROR: Consulta Neo4j fallida: {exc}", file=_sys.stderr)
+        driver.close()
+        _sys.exit(1)
+    print(f"[PAS 1] group_ids trobats: {len(neo4j_gids)}")
+
+    # PAS 2: Llegir BBDD
+    print(f"[PAS 2] Llegint BBDD ({cfg['db_url']})...")
+    conn = open_db(cfg["db_url"])
+    sqlite_data = read_sqlite(conn)
+    conn.close()
+    print(f"[PAS 2] external_ids (graphiti): {len(sqlite_data['known_external_ids'])}, "
+          f"sim_ids: {len(sqlite_data['known_sim_ids'])}, "
+          f"project_ids: {len(sqlite_data['known_project_ids'])}")
+    for w in sqlite_data["warnings"]:
+        print(f"[PAS 2] ADVERTÈNCIA: {w}")
+
+    # PAS 3: Classificar
+    print("[PAS 3] Classificant orfes...")
+    orphans = classify_group_ids(
+        neo4j_gids=neo4j_gids,
+        known_external_ids=sqlite_data["known_external_ids"],
+        known_sim_ids=sqlite_data["known_sim_ids"],
+        known_project_ids=sqlite_data["known_project_ids"],
+        graph_rows=sqlite_data["graph_rows"],
+    )
+    driver.close()
+
+    # Generar log
+    log_content = generate_log_content(
+        neo4j_uri=cfg["neo4j_uri"],
+        db_path=cfg["db_url"],
+        neo4j_gids=neo4j_gids,
+        sqlite_data=sqlite_data,
+        orphans=orphans,
+        delete_script_path=str(delete_path),
+        log_path=str(log_path),
+        timestamp=timestamp,
+    )
+    log_path.write_text(log_content, encoding="utf-8")
+    print(f"\n{log_content}")
+
+    # Generar script d'eliminació
+    delete_content = generate_delete_script(
+        orphans=orphans,
+        neo4j_uri=cfg["neo4j_uri"],
+        log_path=str(log_path),
+        timestamp=timestamp,
+    )
+    delete_path.write_text(delete_content, encoding="utf-8")
+    delete_path.chmod(0o755)
+
+    print(f"\nLog guardat a: {log_path}")
+    print(f"Script d'eliminació generat: {delete_path}")
+
+
+if __name__ == "__main__":
+    main()
