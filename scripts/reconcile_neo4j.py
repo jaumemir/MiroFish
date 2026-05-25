@@ -102,59 +102,68 @@ def read_sqlite(conn) -> dict[str, Any]:
         graph_rows         : list[dict] — files de graphs amb external_id vàlid
         warnings           : list[str] — inconsistències detectades (no generen eliminació)
     """
+    # sqlite3 té conn.execute() directe; psycopg2 requereix cursor explícit
     _is_sqlite = isinstance(conn, _sqlite3.Connection)
-    if _is_sqlite:
-        _original_factory = conn.row_factory
-        conn.row_factory = _sqlite3.Row
-    try:
-        warnings = []
-        known_external_ids: set[str] = set()
-        graph_rows: list[dict[str, Any]] = []
 
-        for row in conn.execute("SELECT id, project_id, backend, external_id FROM graphs").fetchall():
-            gid = row["id"]
-            backend = row["backend"] or ""
-            ext_id = row["external_id"]
-
-            if backend != "graphiti":
-                warnings.append(
-                    f"GraphModel id='{gid}' backend='{backend}' — ignorat per a reconciliació Neo4j"
-                )
-                continue
-
-            if not ext_id:
-                warnings.append(
-                    f"GraphModel id='{gid}' backend='graphiti' external_id=NULL — sense external_id, no reconciliable"
-                )
-                continue
-
-            known_external_ids.add(ext_id)
-            graph_rows.append({
-                "graph_id": gid,
-                "project_id": row["project_id"],
-                "external_id": ext_id,
-            })
-
-        known_sim_ids: set[str] = {
-            row["id"]
-            for row in conn.execute("SELECT id FROM simulations").fetchall()
-        }
-
-        known_project_ids: set[str] = {
-            row["id"]
-            for row in conn.execute("SELECT id FROM projects").fetchall()
-        }
-
-        return {
-            "known_external_ids": known_external_ids,
-            "known_sim_ids": known_sim_ids,
-            "known_project_ids": known_project_ids,
-            "graph_rows": graph_rows,
-            "warnings": warnings,
-        }
-    finally:
+    def _fetchall(sql: str) -> list:
         if _is_sqlite:
-            conn.row_factory = _original_factory
+            _original_factory = conn.row_factory
+            conn.row_factory = _sqlite3.Row
+            try:
+                return conn.execute(sql).fetchall()
+            finally:
+                conn.row_factory = _original_factory
+        else:
+            import psycopg2.extras as _pg_extras
+            with conn.cursor(cursor_factory=_pg_extras.RealDictCursor) as cur:
+                cur.execute(sql)
+                return cur.fetchall()
+
+    warnings = []
+    known_external_ids: set[str] = set()
+    graph_rows: list[dict[str, Any]] = []
+
+    for row in _fetchall("SELECT id, project_id, backend, external_id FROM graphs"):
+        gid = row["id"]
+        backend = row["backend"] or ""
+        ext_id = row["external_id"]
+
+        if backend != "graphiti":
+            warnings.append(
+                f"GraphModel id='{gid}' backend='{backend}' — ignorat per a reconciliació Neo4j"
+            )
+            continue
+
+        if not ext_id:
+            warnings.append(
+                f"GraphModel id='{gid}' backend='graphiti' external_id=NULL — sense external_id, no reconciliable"
+            )
+            continue
+
+        known_external_ids.add(ext_id)
+        graph_rows.append({
+            "graph_id": gid,
+            "project_id": row["project_id"],
+            "external_id": ext_id,
+        })
+
+    known_sim_ids: set[str] = {
+        row["id"]
+        for row in _fetchall("SELECT id FROM simulations")
+    }
+
+    known_project_ids: set[str] = {
+        row["id"]
+        for row in _fetchall("SELECT id FROM projects")
+    }
+
+    return {
+        "known_external_ids": known_external_ids,
+        "known_sim_ids": known_sim_ids,
+        "known_project_ids": known_project_ids,
+        "graph_rows": graph_rows,
+        "warnings": warnings,
+    }
 
 
 def read_neo4j_group_ids(driver: Any) -> set[str]:
