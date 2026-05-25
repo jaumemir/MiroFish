@@ -183,3 +183,40 @@ def test_read_sqlite_empty_tables():
     assert result["known_project_ids"] == set()
     assert result["graph_rows"] == []
     assert result["warnings"] == []
+
+
+from unittest.mock import MagicMock, patch
+
+
+def test_read_neo4j_group_ids_returns_set():
+    from reconcile_neo4j import read_neo4j_group_ids
+
+    mock_record1 = MagicMock()
+    mock_record1.__getitem__ = lambda self, k: "mirofish_abc" if k == "gid" else None
+    mock_record2 = MagicMock()
+    mock_record2.__getitem__ = lambda self, k: "mirofish_xyz" if k == "gid" else None
+
+    mock_result = MagicMock()
+    mock_result.records = [mock_record1, mock_record2]
+
+    mock_driver = MagicMock()
+    mock_driver.execute_query.return_value = mock_result
+
+    result = read_neo4j_group_ids(mock_driver)
+    assert result == {"mirofish_abc", "mirofish_xyz"}
+    mock_driver.execute_query.assert_called_once()
+    call_args = mock_driver.execute_query.call_args[0][0]
+    assert "group_id" in call_args
+    assert "DISTINCT" in call_args
+
+
+def test_read_neo4j_group_ids_empty():
+    from reconcile_neo4j import read_neo4j_group_ids
+
+    mock_result = MagicMock()
+    mock_result.records = []
+    mock_driver = MagicMock()
+    mock_driver.execute_query.return_value = mock_result
+
+    result = read_neo4j_group_ids(mock_driver)
+    assert result == set()

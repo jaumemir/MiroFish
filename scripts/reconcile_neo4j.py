@@ -149,3 +149,19 @@ def read_sqlite(conn: _sqlite3.Connection) -> dict[str, Any]:
         }
     finally:
         conn.row_factory = _original_factory
+
+
+def read_neo4j_group_ids(driver: Any) -> set[str]:
+    """Consulta Neo4j i retorna tots els group_id únics que existeixen.
+
+    Args:
+        driver: Neo4j driver sincronitzat (neo4j.GraphDatabase.driver(...))
+
+    Returns:
+        Conjunt de strings amb tots els group_id distincts trobats.
+    """
+    result = driver.execute_query(
+        "MATCH (n) WHERE n.group_id IS NOT NULL "
+        "RETURN DISTINCT n.group_id AS gid"
+    )
+    return {record["gid"] for record in result.records if record["gid"]}
