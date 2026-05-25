@@ -72,7 +72,7 @@ def test_multiple_group_ids_mixed():
     neo4j_gids = {
         "mirofish_valid1",
         "mirofish_orphan1",
-        "mirofish_sim_deadbeef123456_sim",
+        "mirofish_sim_deadbeef1234_sim",
         "mirofish_dangling",
     }
     known_external_ids = {"mirofish_valid1", "mirofish_dangling"}

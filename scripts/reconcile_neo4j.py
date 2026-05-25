@@ -23,8 +23,8 @@ class OrphanCategory(str, Enum):
 
 
 # Patró de group_id de simulació: mirofish_<sim_id>_sim
-# sim_id segueix el format sim_<anything>
-_SIM_GID_RE = re.compile(r"^mirofish_(sim_[\w]+)_sim$")
+# sim_id segueix el format sim_<12 hex digits>
+_SIM_GID_RE = re.compile(r"^mirofish_(sim_[a-f0-9]{12})_sim$")
 
 
 def classify_group_ids(
